@@ -12,14 +12,14 @@
     --bg: #f6f4ef; --card: #ffffff; --text: #1f1d1a; --muted: #6b665e;
     --line: #e2ddd3; --accent: #2f5d50; --accent-text: #ffffff;
     --ok: #2e7d4f; --ok-bg: #e5f3ea; --bad: #b3412f; --bad-bg: #f8e6e2;
-    --chip-off: #ece8e0;
+    --chip-off: #ece8e0; --negra: #2b2925; --negra-text: #f6f4ef;
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --bg: #171614; --card: #22201d; --text: #ece8e0; --muted: #a39d92;
       --line: #36332e; --accent: #6fb39d; --accent-text: #10201b;
       --ok: #7cc79a; --ok-bg: #1f3328; --bad: #e88b7a; --bad-bg: #3a2420;
-      --chip-off: #2d2a26;
+      --chip-off: #2d2a26; --negra: #0c0b0a; --negra-text: #ece8e0;
     }
   }
   * { box-sizing: border-box; }
@@ -28,346 +28,603 @@
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     -webkit-tap-highlight-color: transparent;
   }
-  main { max-width: 640px; margin: 0 auto; padding: 24px 16px 48px; }
-  h1 { font-size: 1.35rem; margin: 0 0 4px; }
-  .sub { color: var(--muted); margin: 0 0 20px; font-size: .95rem; }
-  .card {
-    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
-    padding: 16px; margin-bottom: 16px;
-  }
-  .label { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em;
+  main { max-width: 640px; margin: 0 auto; padding: 20px 16px 48px; }
+  h1 { font-size: 1.3rem; margin: 0; }
+  .sub { color: var(--muted); margin: 0 0 14px; font-size: .95rem; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 16px; margin-bottom: 14px; }
+  .label { font-size: .78rem; text-transform: uppercase; letter-spacing: .06em;
     color: var(--muted); margin: 0 0 8px; }
-  .row { display: flex; flex-wrap: wrap; gap: 8px; }
-  .row + .label { margin-top: 16px; }
-  .chip {
-    border: 1px solid var(--line); background: var(--chip-off); color: var(--text);
-    border-radius: 999px; padding: 7px 14px; font-size: .95rem; cursor: pointer;
-  }
+  .bloque + .bloque { margin-top: 16px; }
+  .row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { border: 1px solid var(--line); background: var(--chip-off); color: var(--text);
+    border-radius: 999px; padding: 6px 12px; font-size: .92rem; cursor: pointer; }
   .chip.on { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
-  .switch { display: flex; align-items: center; gap: 10px; margin-top: 16px; cursor: pointer; }
-  .switch input { width: 18px; height: 18px; accent-color: var(--accent); }
+  .chip.mini { font-size: .8rem; padding: 4px 10px; background: transparent; }
+  .switch { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
+  .switch input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--accent); }
   .switch small { color: var(--muted); display: block; }
+  [hidden] { display: none !important; }
 
-  .stage { text-align: center; padding: 22px 16px; }
-  .estado { min-height: 3.2em; font-size: 1.05rem; color: var(--muted); margin-bottom: 14px;
-    display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 4px; }
-  .estado.ok { color: var(--ok); }
-  .estado.bad { color: var(--bad); }
-  .estado b { font-size: 1.6rem; }
-  .respuestas { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin: 8px 0 16px; }
-  .resp {
-    border: 1px solid var(--line); background: var(--card); color: var(--text);
-    border-radius: 10px; padding: 16px 0; font-size: 1.05rem; font-weight: 600; cursor: pointer;
-  }
-  .resp:disabled { opacity: .35; cursor: default; }
-  .resp.correcta { background: var(--ok-bg); border-color: var(--ok); color: var(--ok); opacity: 1; }
-  .resp.erronea { background: var(--bad-bg); border-color: var(--bad); color: var(--bad); opacity: 1; }
-  .acciones { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
-  .btn {
-    border: 1px solid var(--line); background: var(--card); color: var(--text);
-    border-radius: 10px; padding: 10px 16px; font-size: .95rem; cursor: pointer;
-  }
+  .pestanas { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; background: var(--chip-off);
+    border-radius: 12px; padding: 4px; margin: 12px 0 14px; }
+  .pestana { border: 0; background: transparent; color: var(--muted); border-radius: 9px;
+    padding: 9px 2px; font-size: .95rem; font-weight: 600; cursor: pointer; }
+  .pestana.on { background: var(--card); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+
+  .stage { text-align: center; }
+  .estado { min-height: 3.4em; font-size: 1.02rem; color: var(--muted); margin-bottom: 12px;
+    display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 2px; }
+  .estado.ok { color: var(--ok); } .estado.bad { color: var(--bad); }
+  .estado b { font-size: 1.55rem; color: inherit; }
+  .estado .grande { font-size: 2.4rem; color: var(--text); font-weight: 700; }
+  .estado small { font-size: .85rem; color: var(--muted); }
+  .acciones { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 14px; }
+  .btn { border: 1px solid var(--line); background: var(--card); color: var(--text);
+    border-radius: 10px; padding: 10px 16px; font-size: .95rem; cursor: pointer; }
   .btn.primario { background: var(--accent); color: var(--accent-text); border-color: var(--accent);
     font-weight: 600; padding: 12px 22px; }
-  .btn[hidden] { display: none; }
-  .pestanas { display: flex; gap: 4px; background: var(--chip-off); border-radius: 12px;
-    padding: 4px; margin: 12px 0 16px; }
-  .pestana { flex: 1; border: 0; background: transparent; color: var(--muted); border-radius: 9px;
-    padding: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; }
-  .pestana.on { background: var(--card); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
-  .escuchar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 14px; }
-  .escuchar .resp.sonando { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
-  .row.centro { justify-content: center; min-height: 36px; }
-  .chip.actual { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
-  #vistaEscuchar[hidden], #vistaPracticar[hidden] { display: none; }
-  @media (max-width: 480px) { .escuchar { grid-template-columns: repeat(4, 1fr); } }
-  .ayuda { color: var(--muted); font-size: .82rem; text-align: center; margin-top: 12px; }
-  @media (max-width: 480px) {
-    .respuestas { grid-template-columns: repeat(4, 1fr); }
-    .resp { padding: 14px 0; }
-  }
+  .ayuda { color: var(--muted); font-size: .8rem; text-align: center; margin: 12px 0 0; }
+
+  /* teclado de piano para responder */
+  .teclado { display: grid; grid-template-columns: repeat(14, 1fr); gap: 4px; }
+  .tecla { border: 1px solid var(--line); border-radius: 9px; cursor: pointer; font-weight: 600;
+    background: var(--card); color: var(--text); padding: 16px 0; font-size: .98rem; line-height: 1.1; }
+  .tecla.blanca { grid-row: 2; grid-column: span 2; }
+  .tecla.negra { grid-row: 1; background: var(--negra); color: var(--negra-text); border-color: var(--negra);
+    padding: 7px 0; font-size: .78rem; }
+  .tecla.negra small { display: block; font-weight: 400; opacity: .75; font-size: .7rem; }
+  .teclado.sin-negras .negra { display: none; }
+  .tecla:disabled { opacity: .28; cursor: default; }
+  .tecla.correcta { background: var(--ok-bg); border-color: var(--ok); color: var(--ok); opacity: 1; }
+  .tecla.erronea { background: var(--bad-bg); border-color: var(--bad); color: var(--bad); opacity: 1; }
+  .tecla.sonando { background: var(--accent); border-color: var(--accent); color: var(--accent-text); opacity: 1; }
+  @media (max-width: 420px) { .tecla.blanca { font-size: .85rem; padding: 14px 0; } .tecla.negra { font-size: .68rem; } }
+
+  .nivel { height: 6px; border-radius: 3px; background: var(--chip-off); overflow: hidden; margin: 4px auto 0; max-width: 220px; }
+  .nivel > div { height: 100%; width: 0; background: var(--accent); transition: width .08s; }
+  .progreso { color: var(--muted); font-size: .85rem; margin-bottom: 6px; }
+  table { width: 100%; border-collapse: collapse; font-size: .92rem; margin-top: 8px; text-align: left; }
+  td, th { padding: 6px 4px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 500; font-size: .8rem; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .resultado { font-size: 2.6rem; font-weight: 700; margin: 4px 0; }
+  .mal { color: var(--bad); }
+  .izq { text-align: left; }
 </style>
 </head>
 <body>
 <main>
   <h1>Entrenador de oído absoluto</h1>
   <nav class="pestanas" role="tablist">
-    <button class="pestana on" id="tabPracticar" role="tab">Practicar</button>
-    <button class="pestana" id="tabEscuchar" role="tab">Escuchar</button>
+    <button class="pestana on" data-tab="practicar" role="tab">Practicar</button>
+    <button class="pestana" data-tab="cantar" role="tab">Cantar</button>
+    <button class="pestana" data-tab="escuchar" role="tab">Escuchar</button>
+    <button class="pestana" data-tab="prueba" role="tab">Prueba</button>
   </nav>
 
-  <div id="vistaEscuchar" hidden>
-  <p class="sub">Escucha cada nota en todas las octavas del piano, de grave a agudo.</p>
-  <section class="card stage">
-    <div class="escuchar" id="listaEscuchar"></div>
-    <div class="estado" id="estadoEscuchar">Toca una nota para escucharla. Tócala otra vez para pararla.</div>
-    <div class="row centro" id="octavasEscuchar"></div>
-  </section>
-  </div>
+  <p class="sub" data-solo="practicar">Escucha la nota y elige cuál es. Las que falles volverán más adelante.</p>
+  <p class="sub" data-solo="cantar">La app te dice una nota y tú la cantas sin oírla antes.</p>
+  <p class="sub" data-solo="escuchar">Escucha cada nota en todas las octavas del piano, de grave a agudo.</p>
+  <p class="sub" data-solo="prueba">Mide tu nivel de vez en cuando (por ejemplo, cada dos semanas), sin ayudas.</p>
 
-  <div id="vistaPracticar">
-  <p class="sub">Escucha la nota y elige cuál es. Las que falles aparecerán más a menudo.</p>
-
-  <section class="card" aria-label="Ajustes">
-    <p class="label">Notas en juego</p>
-    <div class="row" id="notas"></div>
-    <p class="label">Octava</p>
-    <div class="row" id="octavas"></div>
-    <label class="switch">
-      <input type="checkbox" id="borrador" checked>
-      <span>Borrar la nota anterior
-        <small>Suena un ruido breve antes de cada nota para que no puedas compararla con la anterior.</small>
-      </span>
-    </label>
-  </section>
-
-  <section class="card stage" aria-live="polite">
-    <div class="estado" id="estado">Pulsa «Empezar» cuando estés listo.</div>
-    <div class="respuestas" id="respuestas"></div>
-    <div class="acciones">
-      <button class="btn primario" id="siguiente">Empezar</button>
-      <button class="btn" id="repetir" hidden>Repetir nota</button>
-      <button class="btn" id="oirCorrecta" hidden>Oír la correcta</button>
-      <button class="btn" id="oirTuya" hidden>Oír la que elegiste</button>
+  <!-- Ajustes compartidos -->
+  <section class="card" id="ajustes" aria-label="Ajustes">
+    <div class="bloque" data-solo="practicar cantar prueba">
+      <p class="label">Notas en juego</p>
+      <div class="row" id="chipsNotas"></div>
+      <div class="row" style="margin-top:8px">
+        <button class="chip mini" id="soloNaturales">Solo naturales</button>
+        <button class="chip mini" id="todas">Las 12</button>
+      </div>
     </div>
-    <p class="ayuda">Teclado: 1–7 para responder · Espacio = siguiente · R = repetir</p>
+    <div class="bloque" data-solo="practicar">
+      <p class="label">Octava</p>
+      <div class="row" id="chipsOctavas"></div>
+    </div>
+    <div class="bloque" data-solo="practicar">
+      <p class="label">Timbre</p>
+      <div class="row" id="chipsTimbre"></div>
+    </div>
+    <div class="bloque" data-solo="practicar cantar">
+      <label class="switch">
+        <input type="checkbox" id="borrador" checked>
+        <span>Borrar la nota anterior
+          <small>Un ruido breve antes de cada nota para que no puedas compararla con la anterior.</small>
+        </span>
+      </label>
+    </div>
   </section>
-  </div>
+
+  <!-- PRACTICAR -->
+  <section class="card stage" data-vista="practicar" aria-live="polite">
+    <div class="estado" id="pEstado">Pulsa «Empezar» cuando estés listo.</div>
+    <div id="pTeclado"></div>
+    <div class="acciones">
+      <button class="btn primario" id="pSiguiente">Empezar</button>
+      <button class="btn" id="pRepetir" hidden>Repetir nota</button>
+      <button class="btn" id="pOirCorrecta" hidden>Oír la correcta</button>
+      <button class="btn" id="pOirTuya" hidden>Oír la que elegiste</button>
+    </div>
+    <p class="ayuda">Teclado: A W S E D F T G Y H U J (como un piano) o 1–7 · Espacio = siguiente · R = repetir</p>
+  </section>
+
+  <!-- CANTAR -->
+  <section class="card stage" data-vista="cantar" aria-live="polite" hidden>
+    <div class="estado" id="cEstado">Pulsa «Empezar». Necesitarás permitir el micrófono.</div>
+    <div class="nivel" id="cNivelCaja" hidden><div id="cNivel"></div></div>
+    <div class="acciones">
+      <button class="btn primario" id="cSiguiente">Empezar</button>
+      <button class="btn primario" id="cCantar" hidden>🎤 Cantar</button>
+      <button class="btn" id="cOirCorrecta" hidden>Oír la correcta</button>
+      <button class="btn" id="cOirTuya" hidden>Oír lo que cantaste</button>
+    </div>
+    <p class="ayuda">Canta la nota en la octava que te resulte cómoda y mantenla un segundo. Da igual la octava.</p>
+  </section>
+
+  <!-- ESCUCHAR -->
+  <section class="card stage" data-vista="escuchar" hidden>
+    <div id="eTeclado"></div>
+    <div class="estado" id="eEstado" style="margin-top:14px">Toca una nota para escucharla. Tócala otra vez para pararla.</div>
+    <div class="row" id="eOctavas" style="justify-content:center;min-height:34px"></div>
+  </section>
+
+  <!-- PRUEBA -->
+  <section class="card stage" data-vista="prueba" aria-live="polite" hidden>
+    <div id="tIntro">
+      <div class="estado" id="tIntroTexto"></div>
+      <div class="acciones"><button class="btn primario" id="tEmpezar">Empezar prueba</button></div>
+    </div>
+    <div id="tCurso" hidden>
+      <div class="progreso" id="tProgreso"></div>
+      <div class="estado" id="tEstado"></div>
+      <div id="tTeclado"></div>
+      <div class="acciones">
+        <button class="btn" id="tRepetir">Repetir nota</button>
+        <button class="btn" id="tCancelar">Cancelar prueba</button>
+      </div>
+    </div>
+    <div id="tFin" hidden></div>
+    <div id="tHistorial" class="izq"></div>
+  </section>
 </main>
 
 <script>
+// ======================= datos básicos =======================
 const NOTAS = [
-  { es: "Do", en: "C" }, { es: "Re", en: "D" }, { es: "Mi", en: "E" }, { es: "Fa", en: "F" },
-  { es: "Sol", en: "G" }, { es: "La", en: "A" }, { es: "Si", en: "B" },
+  { en: "C",  es: "Do",  pc: 0 },  { en: "Db", es: "Do♯", alt: "Re♭",  pc: 1 },
+  { en: "D",  es: "Re",  pc: 2 },  { en: "Eb", es: "Re♯", alt: "Mi♭",  pc: 3 },
+  { en: "E",  es: "Mi",  pc: 4 },  { en: "F",  es: "Fa",  pc: 5 },
+  { en: "Gb", es: "Fa♯", alt: "Sol♭", pc: 6 }, { en: "G", es: "Sol", pc: 7 },
+  { en: "Ab", es: "Sol♯", alt: "La♭", pc: 8 }, { en: "A", es: "La",  pc: 9 },
+  { en: "Bb", es: "La♯", alt: "Si♭",  pc: 10 }, { en: "B", es: "Si",  pc: 11 },
 ];
-const OCTAVAS = [1, 2, 3, 4, 5, 6, 7];   // octavas donde existen todas las notas naturales
+const POR_EN = Object.fromEntries(NOTAS.map(n => [n.en, n]));
+const NATURALES = NOTAS.filter(n => !n.alt).map(n => n.en);
+const nombre = en => { const n = POR_EN[en]; return n.alt ? `${n.es}/${n.alt}` : n.es; };
+const OCTAVAS = [1, 2, 3, 4, 5, 6, 7];       // octavas donde existen las 12 notas
+const frec = (en, oct) => 440 * 2 ** ((12 * (oct + 1) + POR_EN[en].pc - 69) / 12);
+const $ = id => document.getElementById(id);
+const espera = ms => new Promise(r => setTimeout(r, ms));
+const azar = arr => arr[Math.floor(Math.random() * arr.length)];
 
-// ---------- preferencias y pesos (se guardan en este navegador) ----------
+// ======================= almacenamiento =======================
 function leer(clave, defecto) {
-  try { const v = localStorage.getItem(clave); return v ? JSON.parse(v) : defecto; }
-  catch { return defecto; }
+  try { const v = localStorage.getItem(clave); return v ? JSON.parse(v) : defecto; } catch { return defecto; }
 }
-function guardar(clave, valor) {
-  try { localStorage.setItem(clave, JSON.stringify(valor)); } catch {}
-}
+function guardar(clave, valor) { try { localStorage.setItem(clave, JSON.stringify(valor)); } catch {} }
+
 const ajustes = Object.assign(
-  { activas: NOTAS.map(n => n.en), octava: "libre", borrador: true },
+  { activas: NATURALES.slice(), octava: "libre", borrador: true, timbre: "piano" },
   leer("oa-ajustes", {})
 );
-const pesos = Object.assign(Object.fromEntries(NOTAS.map(n => [n.en, 1])), leer("oa-pesos", {}));
-for (const k in pesos) pesos[k] = Math.min(4, pesos[k]);   // límite del refuerzo
+ajustes.activas = NOTAS.map(n => n.en).filter(k => ajustes.activas.includes(k));
+if (ajustes.activas.length < 2) ajustes.activas = NATURALES.slice();
 
-// ---------- audio ----------
+// ======================= selección con repaso espaciado =======================
+// Tras un fallo, la nota fallada (y la elegida) esperan 4-7 turnos al azar antes de volver,
+// y después salen algo más a menudo hasta que las aciertas.
+const ESPERA_MIN = 4, ESPERA_MAX = 7, PESO_MAX = 4;
+class Selector {
+  constructor(clave) { this.clave = clave; this.pesos = leer(clave, {}); this.bloqueo = {}; this.ronda = 0; this.ultima = null; }
+  peso(k) { return Math.min(PESO_MAX, this.pesos[k] ?? 1); }
+  elegir(activas) {
+    const posibles = this.ultima && activas.length >= 4 ? activas.filter(k => k !== this.ultima) : activas.slice();
+    let cand = posibles.filter(k => !(this.bloqueo[k] > this.ronda));
+    const enEspera = posibles.filter(k => this.bloqueo[k] > this.ronda).sort((a, b) => this.bloqueo[a] - this.bloqueo[b]);
+    while (cand.length < 2 && enEspera.length) cand.push(enEspera.shift());
+    const total = cand.reduce((s, k) => s + this.peso(k), 0);
+    let r = Math.random() * total;
+    const en = cand.find(k => (r -= this.peso(k)) < 0) || cand[cand.length - 1];
+    this.ronda++; this.ultima = en;
+    return en;
+  }
+  esperar(k) { this.bloqueo[k] = this.ronda + ESPERA_MIN + Math.floor(Math.random() * (ESPERA_MAX - ESPERA_MIN + 1)); }
+  acierto(k) { this.pesos[k] = 1 + (this.peso(k) - 1) * 0.6; guardar(this.clave, this.pesos); }
+  fallo(correcta, elegida) {
+    this.pesos[correcta] = Math.min(PESO_MAX, this.peso(correcta) + 1);
+    this.esperar(correcta);
+    if (elegida && elegida !== correcta) {
+      this.pesos[elegida] = Math.min(PESO_MAX, this.peso(elegida) + 0.5);
+      this.esperar(elegida);
+    }
+    guardar(this.clave, this.pesos);
+  }
+}
+const selPracticar = new Selector("oa-pesos");
+const selCantar = new Selector("oa-pesos-canto");
+
+// ======================= audio =======================
+let ctx = null;
+const getCtx = () => {
+  ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+  if (ctx.state === "suspended") ctx.resume();
+  return ctx;
+};
 const cache = {};
-let sonando = null;
-function audio(en, oct) {
+let sonando = null, sintActual = null;
+function audioPiano(en, oct) {
   const k = en + oct;
   if (!cache[k]) { cache[k] = new Audio(`notas/${k}.mp3`); cache[k].preload = "auto"; }
   return cache[k];
 }
-function tocar(en, oct) {
+function pararTodo() {
+  if (sonando) { sonando.pause(); sonando.currentTime = 0; sonando = null; }
+  if (sintActual) {
+    const g = sintActual.gain, t = getCtx().currentTime;
+    g.cancelScheduledValues(t); g.setValueAtTime(g.value, t); g.linearRampToValueAtTime(0, t + 0.05);
+    sintActual = null;
+  }
   pararEscucha();
-  if (sonando) { sonando.pause(); sonando.currentTime = 0; }
-  sonando = audio(en, oct);
-  sonando.currentTime = 0;
-  return sonando.play().catch(() => {});
+}
+// nota = { en, oct, timbre }
+function tocar(nota) {
+  pararTodo();
+  if (!nota.timbre || nota.timbre === "piano") {
+    sonando = audioPiano(nota.en, nota.oct);
+    sonando.currentTime = 0;
+    sonando.play().catch(() => {});
+  } else {
+    sintActual = sintetizar(nota.timbre, frec(nota.en, nota.oct));
+  }
 }
 function precargar() {
   const octs = ajustes.octava === "libre" ? OCTAVAS : [ajustes.octava];
-  ajustes.activas.forEach(en => octs.forEach(o => audio(en, o)));
+  ajustes.activas.forEach(en => octs.forEach(o => audioPiano(en, o)));
 }
 
-let ctx = null;
-// Ruido breve sin tonalidad: pitidos de frecuencia aleatoria (fuera de la escala) + ruido.
+// ----- timbres sintetizados (afinación exacta, La4 = 440 Hz) -----
+const TIMBRES = {
+  organo:    { nombre: "Órgano",          octs: [1, 2, 3, 4, 5, 6, 7] },
+  pulsada:   { nombre: "Cuerda pulsada",  octs: [1, 2, 3, 4, 5, 6, 7] },
+  electrico: { nombre: "Piano eléctrico", octs: [1, 2, 3, 4, 5, 6, 7] },
+  sinte:     { nombre: "Sintetizador",    octs: [1, 2, 3, 4, 5, 6, 7] },
+  puro:      { nombre: "Tono puro",       octs: [3, 4, 5, 6, 7] },   // en graves no se oiría en un móvil
+};
+const nombreTimbre = t => t === "piano" ? "Piano" : TIMBRES[t].nombre;
+function elegirTimbre(oct) {
+  if (ajustes.timbre !== "variado") return "piano";
+  if (Math.random() < 0.3) return "piano";
+  return azar(Object.keys(TIMBRES).filter(t => TIMBRES[t].octs.includes(oct)));
+}
+function sintetizar(tipo, f) {
+  const c = getCtx(), t0 = c.currentTime + 0.02, dur = 2.2, nyq = c.sampleRate * 0.45;
+  const out = c.createGain();
+  out.gain.setValueAtTime(1, t0); out.gain.setValueAtTime(1, t0 + dur - 0.35);
+  out.gain.linearRampToValueAtTime(0, t0 + dur);
+  out.connect(c.destination);
+  const osc = (freq, type = "sine") => { const o = c.createOscillator(); o.type = type; o.frequency.value = freq;
+    o.start(t0); o.stop(t0 + dur + 0.05); return o; };
+  const amp = (a, ataque, caida) => { const g = c.createGain(); g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(a, t0 + ataque); if (caida) g.gain.setTargetAtTime(0, t0 + ataque, caida); return g; };
+  const parcial = (n, a, ataque, caida) => { if (n * f < nyq) osc(n * f).connect(amp(a, ataque, caida)).connect(out); };
+
+  if (tipo === "organo") {
+    [[1, 1], [2, .6], [3, .4], [4, .3], [6, .15], [8, .12]].forEach(([n, a]) => parcial(n, a * .1, .04, 0));
+  } else if (tipo === "puro") {
+    parcial(1, .13, .05, 0); parcial(2, .01, .05, 0);
+  } else if (tipo === "pulsada") {
+    for (let n = 1; n <= 20; n++) parcial(n, .22 * Math.abs(Math.sin(Math.PI * n * .2)) / n + .01 / n, .004, 1.1 / (1 + n * .3));
+  } else if (tipo === "electrico") {
+    const mod = osc(f), idx = c.createGain(), car = osc(f);
+    idx.gain.setValueAtTime(f * 2.2, t0); idx.gain.setTargetAtTime(f * .3, t0, .35);
+    mod.connect(idx).connect(car.frequency);
+    car.connect(amp(.28, .004, 1.0)).connect(out);
+  } else if (tipo === "sinte") {
+    const o = osc(f, "sawtooth"), fil = c.createBiquadFilter();
+    fil.type = "lowpass"; fil.Q.value = 2;
+    fil.frequency.setValueAtTime(Math.min(f * 8, 14000), t0);
+    fil.frequency.setTargetAtTime(Math.min(f * 3, 12000), t0, .25);
+    o.connect(fil).connect(amp(.18, .02, 0)).connect(out);
+  }
+  return out;
+}
+
+// ----- "borrador": ruido breve sin tonalidad -----
 function borrar() {
-  ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
-  const t0 = ctx.currentTime + 0.05, dur = 1.3;
-  const salida = ctx.createGain(); salida.gain.value = 0.18; salida.connect(ctx.destination);
+  const c = getCtx(), t0 = c.currentTime + 0.05, dur = 1.3;
+  const salida = c.createGain(); salida.gain.value = 0.18; salida.connect(c.destination);
   for (let i = 0; i < 18; i++) {
-    const o = ctx.createOscillator(), g = ctx.createGain();
+    const o = c.createOscillator(), g = c.createGain(), t = t0 + Math.random() * (dur - 0.15);
     o.type = "triangle";
-    const t = t0 + Math.random() * (dur - 0.15);
     o.frequency.setValueAtTime(120 + Math.random() * 2500, t);
     o.frequency.exponentialRampToValueAtTime(120 + Math.random() * 2500, t + 0.15);
-    g.gain.setValueAtTime(0, t);
-    g.gain.linearRampToValueAtTime(0.5, t + 0.01);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.5, t + 0.01);
     g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
     o.connect(g).connect(salida); o.start(t); o.stop(t + 0.16);
   }
-  const n = ctx.createBufferSource(), b = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate);
-  const d = b.getChannelData(0);
+  const n = c.createBufferSource(), b = c.createBuffer(1, c.sampleRate * dur, c.sampleRate), d = b.getChannelData(0);
   for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.25 * (1 - i / d.length);
   n.buffer = b; n.connect(salida); n.start(t0);
-  return new Promise(r => setTimeout(r, (dur + 0.7) * 1000));   // + pausa de silencio
+  return espera((dur + 0.7) * 1000);
 }
 
-// ---------- lógica del ejercicio ----------
-let actual = null;        // { en, oct }
-let respondida = true;
-let turno = 0;            // evita que un "siguiente" antiguo pise uno nuevo
-
-// Tras un fallo, la nota fallada (y la que elegiste) quedan "en espera" un número
-// aleatorio de turnos, para que su vuelta no delate cuál es.
-const ESPERA_MIN = 4, ESPERA_MAX = 7;
-const PESO_MAX = 4;
-let ronda = 0;            // número de notas que han sonado
-const bloqueo = {};       // nota -> ronda a partir de la cual puede volver a salir
-
-function elegir() {
-  const activas = ajustes.activas;
-  // nunca la misma nota dos veces seguidas (si hay notas suficientes para no hacerlo predecible)
-  const posibles = actual && activas.length >= 4 ? activas.filter(k => k !== actual.en) : activas.slice();
-  let candidatas = posibles.filter(k => !(bloqueo[k] > ronda));
-  // si casi todas están en espera, se libera solo la que antes iba a volver (al menos 2 opciones)
-  const enEspera = posibles.filter(k => bloqueo[k] > ronda).sort((a, b) => bloqueo[a] - bloqueo[b]);
-  while (candidatas.length < 2 && enEspera.length) candidatas.push(enEspera.shift());
-  const total = candidatas.reduce((s, k) => s + pesos[k], 0);
-  let r = Math.random() * total;
-  const en = candidatas.find(k => (r -= pesos[k]) < 0) || candidatas[candidatas.length - 1];
-  let oct;
-  do {
-    oct = ajustes.octava === "libre"
-      ? OCTAVAS[Math.floor(Math.random() * OCTAVAS.length)] : ajustes.octava;
-  } while (ajustes.octava === "libre" && actual && en === actual.en && oct === actual.oct);
-  ronda++;
-  return { en, oct };
+// ======================= teclado de respuesta =======================
+const COL_NEGRA = { Db: 2, Eb: 4, Gb: 8, Ab: 10, Bb: 12 };
+function Teclado(contenedor, alPulsar) {
+  contenedor.className = "teclado";
+  const teclas = {};
+  NOTAS.forEach(n => {
+    const b = document.createElement("button");
+    b.dataset.en = n.en;
+    if (n.alt) {
+      b.className = "tecla negra"; b.innerHTML = `${n.es}<small>${n.alt}</small>`;
+      b.style.gridColumn = `${COL_NEGRA[n.en]} / span 2`;
+    } else { b.className = "tecla blanca"; b.textContent = n.es; }
+    b.onclick = () => alPulsar(n.en);
+    contenedor.appendChild(b); teclas[n.en] = b;
+  });
+  return {
+    pintar({ activas = [], habilitado = true, correcta = null, erronea = null, sonando = null, mostrarNegras = null } = {}) {
+      const negras = mostrarNegras ?? activas.some(k => POR_EN[k].alt);
+      contenedor.classList.toggle("sin-negras", !negras);
+      for (const [en, b] of Object.entries(teclas)) {
+        b.disabled = !habilitado || !activas.includes(en);
+        b.classList.toggle("correcta", en === correcta);
+        b.classList.toggle("erronea", en === erronea);
+        b.classList.toggle("sonando", en === sonando);
+      }
+    },
+  };
 }
+// atajos de teclado tipo piano (fila A..J) y números para las naturales
+const TECLAS_PIANO = { a: "C", w: "Db", s: "D", e: "Eb", d: "E", f: "F", t: "Gb", g: "G", y: "Ab", h: "A", u: "Bb", j: "B" };
+const tecladoANota = k => TECLAS_PIANO[k.toLowerCase()] || (k >= "1" && k <= "7" ? NATURALES[+k - 1] : null);
 
-function esperar(k) {
-  bloqueo[k] = ronda + ESPERA_MIN + Math.floor(Math.random() * (ESPERA_MAX - ESPERA_MIN + 1));
+// ======================= pestañas =======================
+let vista = "practicar", ficha = 0;     // "ficha" invalida esperas pendientes al cambiar de pestaña
+function verPestana(cual) {
+  vista = cual; ficha++;
+  pararTodo(); pararMicro();
+  document.querySelectorAll(".pestana").forEach(b => b.classList.toggle("on", b.dataset.tab === cual));
+  document.querySelectorAll("[data-vista]").forEach(s => s.hidden = s.dataset.vista !== cual);
+  document.querySelectorAll("[data-solo]").forEach(s => s.hidden = !s.dataset.solo.split(" ").includes(cual));
+  $("ajustes").hidden = cual === "escuchar";
+  ({ practicar: pausarPractica, cantar: pausarCanto, escuchar: pintarEscuchar,
+     // al volver a una prueba a medias se sigue con «Repetir nota»
+     prueba: () => { if (prueba) prueba.esperando = false; pintarPrueba(); } })[cual]();
 }
+document.querySelectorAll(".pestana").forEach(b => b.onclick = () => verPestana(b.dataset.tab));
 
-async function siguiente() {
-  const mio = ++turno;
-  actual = elegir();
-  respondida = true;
-  pintarRespuestas();
-  mostrar(["oirCorrecta", "oirTuya", "repetir"], false);
-  $("siguiente").hidden = true;
-  if (ajustes.borrador) {
-    estado("Borrando…");
-    await borrar();
-    if (mio !== turno) return;
-  }
-  estado("¿Qué nota es?");
-  respondida = false;
-  pintarRespuestas();
-  $("repetir").hidden = false;
-  tocar(actual.en, actual.oct);
-}
-
-function responder(en) {
-  if (respondida || !actual) return;
-  respondida = true;
-  const nombre = k => NOTAS.find(n => n.en === k).es;
-  const acierto = en === actual.en;
-  if (acierto) {
-    pesos[en] = 1 + (pesos[en] - 1) * 0.6;
-    estado(`<b>✓ ${nombre(en)}</b>Correcto`, "ok");
-  } else {
-    // refuerzo suave: saldrán algo más a menudo, pero solo tras la espera
-    pesos[actual.en] = Math.min(PESO_MAX, pesos[actual.en] + 1);
-    pesos[en] = Math.min(PESO_MAX, pesos[en] + 0.5);   // también la nota con la que la confundiste
-    esperar(actual.en);
-    esperar(en);
-    estado(`<b>✗ Era ${nombre(actual.en)}</b>Elegiste ${nombre(en)}`, "bad");
-    tocar(actual.en, actual.oct);
-  }
-  guardar("oa-pesos", pesos);
-  pintarRespuestas(en);
-  ultimaElegida = en;
-  $("repetir").hidden = true;
-  $("oirCorrecta").hidden = acierto;
-  $("oirTuya").hidden = acierto;
-  $("siguiente").hidden = false;
-  $("siguiente").textContent = "Siguiente";
-  if (acierto) {
-    const mio = turno;
-    setTimeout(() => { if (mio === turno) siguiente(); }, 1400);
-  }
-}
-let ultimaElegida = null;
-
-// ---------- interfaz ----------
-const $ = id => document.getElementById(id);
-function mostrar(ids, visible) { ids.forEach(id => $(id).hidden = !visible); }
-function estado(html, clase = "") { const e = $("estado"); e.innerHTML = html; e.className = "estado " + clase; }
-
+// ======================= ajustes =======================
 function pintarAjustes() {
-  $("notas").innerHTML = "";
+  $("chipsNotas").innerHTML = "";
   NOTAS.forEach(n => {
     const b = document.createElement("button");
     b.className = "chip" + (ajustes.activas.includes(n.en) ? " on" : "");
-    b.textContent = n.es;
+    b.textContent = n.alt ? `${n.es}` : n.es;
+    b.title = nombre(n.en);
     b.onclick = () => {
-      const a = ajustes.activas;
-      if (a.includes(n.en)) { if (a.length > 2) a.splice(a.indexOf(n.en), 1); }
-      else a.push(n.en);
-      ajustes.activas = NOTAS.map(x => x.en).filter(k => a.includes(k));
+      const a = new Set(ajustes.activas);
+      if (a.has(n.en)) { if (a.size > 2) a.delete(n.en); } else a.add(n.en);
+      ajustes.activas = NOTAS.map(x => x.en).filter(k => a.has(k));
       cambiarAjustes();
     };
-    $("notas").appendChild(b);
+    $("chipsNotas").appendChild(b);
   });
-  $("octavas").innerHTML = "";
+  $("chipsOctavas").innerHTML = "";
   ["libre", ...OCTAVAS].forEach(o => {
     const b = document.createElement("button");
     b.className = "chip" + (ajustes.octava === o ? " on" : "");
     b.textContent = o === "libre" ? "Libre" : o;
-    b.title = o === "libre" ? "La aplicación elige la octava al azar" : `Solo la octava ${o}`;
     b.onclick = () => { ajustes.octava = o; cambiarAjustes(); };
-    $("octavas").appendChild(b);
+    $("chipsOctavas").appendChild(b);
+  });
+  $("chipsTimbre").innerHTML = "";
+  [["piano", "Piano"], ["variado", "Variado"]].forEach(([v, t]) => {
+    const b = document.createElement("button");
+    b.className = "chip" + (ajustes.timbre === v ? " on" : "");
+    b.textContent = t;
+    b.title = v === "variado" ? "Piano, órgano, cuerda pulsada, piano eléctrico, sintetizador y tono puro" : "";
+    b.onclick = () => { ajustes.timbre = v; cambiarAjustes(); };
+    $("chipsTimbre").appendChild(b);
   });
   $("borrador").checked = ajustes.borrador;
 }
 function cambiarAjustes() {
   guardar("oa-ajustes", ajustes);
   pintarAjustes();
-  pintarRespuestas();
+  pintarPractica();
+  if (vista === "prueba") pintarPrueba();
   precargar();
 }
-
-function pintarRespuestas(elegida) {
-  $("respuestas").innerHTML = "";
-  NOTAS.forEach((n, i) => {
-    const b = document.createElement("button");
-    b.className = "resp";
-    b.textContent = n.es;
-    b.disabled = respondida || !ajustes.activas.includes(n.en);
-    if (elegida && actual) {
-      if (n.en === actual.en) b.classList.add("correcta");
-      else if (n.en === elegida) b.classList.add("erronea");
-    }
-    b.onclick = () => responder(n.en);
-    $("respuestas").appendChild(b);
-  });
-}
-
 $("borrador").onchange = e => { ajustes.borrador = e.target.checked; guardar("oa-ajustes", ajustes); };
-$("siguiente").onclick = siguiente;
-$("repetir").onclick = () => actual && tocar(actual.en, actual.oct);
-$("oirCorrecta").onclick = () => actual && tocar(actual.en, actual.oct);
-$("oirTuya").onclick = () => actual && ultimaElegida && tocar(ultimaElegida, actual.oct);
+$("soloNaturales").onclick = () => { ajustes.activas = NATURALES.slice(); cambiarAjustes(); };
+$("todas").onclick = () => { ajustes.activas = NOTAS.map(n => n.en); cambiarAjustes(); };
 
-document.addEventListener("keydown", e => {
-  if (e.target.tagName === "INPUT" || $("vistaPracticar").hidden) return;
-  const n = parseInt(e.key, 10);
-  if (n >= 1 && n <= 7) {
-    const en = NOTAS[n - 1].en;
-    if (ajustes.activas.includes(en)) responder(en);
-  } else if (e.key === " " || e.key === "Enter") {
-    e.preventDefault();
-    if (!$("siguiente").hidden) siguiente();
-  } else if (e.key.toLowerCase() === "r" && actual && !respondida) {
-    tocar(actual.en, actual.oct);
+// ======================= PRACTICAR =======================
+const pTeclado = Teclado($("pTeclado"), en => responder(en));
+let pNota = null, pRespondida = true, pElegida = null;
+
+function pEstado(html, clase = "") { const e = $("pEstado"); e.innerHTML = html; e.className = "estado " + clase; }
+function pintarPractica(marcas = {}) {
+  pTeclado.pintar({ activas: ajustes.activas, habilitado: !pRespondida, ...marcas });
+}
+async function siguiente() {
+  const mia = ++ficha;
+  const en = selPracticar.elegir(ajustes.activas);
+  let oct;
+  do { oct = ajustes.octava === "libre" ? azar(OCTAVAS) : ajustes.octava; }
+  while (ajustes.octava === "libre" && pNota && pNota.en === en && pNota.oct === oct);
+  pNota = { en, oct, timbre: elegirTimbre(oct) };
+  pRespondida = true; pintarPractica();
+  ["pOirCorrecta", "pOirTuya", "pRepetir", "pSiguiente"].forEach(id => $(id).hidden = true);
+  if (ajustes.borrador) { pEstado("Borrando…"); await borrar(); if (mia !== ficha) return; }
+  pEstado("¿Qué nota es?");
+  pRespondida = false; pintarPractica();
+  $("pRepetir").hidden = false;
+  tocar(pNota);
+}
+function responder(en) {
+  if (pRespondida || !pNota) return;
+  pRespondida = true; pElegida = en;
+  const ok = en === pNota.en;
+  const timbre = ajustes.timbre === "variado" ? `<small>Timbre: ${nombreTimbre(pNota.timbre)}</small>` : "";
+  if (ok) { selPracticar.acierto(en); pEstado(`<b>✓ ${nombre(en)}</b>Correcto${timbre}`, "ok"); }
+  else {
+    selPracticar.fallo(pNota.en, en);
+    pEstado(`<b>✗ Era ${nombre(pNota.en)}</b>Elegiste ${nombre(en)}${timbre}`, "bad");
+    tocar(pNota);
   }
-});
+  pintarPractica({ correcta: pNota.en, erronea: ok ? null : en });
+  $("pRepetir").hidden = true;
+  $("pOirCorrecta").hidden = $("pOirTuya").hidden = ok;
+  $("pSiguiente").hidden = false; $("pSiguiente").textContent = "Siguiente";
+  if (ok) { const mia = ficha; setTimeout(() => { if (mia === ficha && vista === "practicar") siguiente(); }, 1400); }
+}
+function pausarPractica() {
+  if (!pNota) return pintarPractica();
+  pRespondida = true; pintarPractica();
+  pEstado("Pulsa «Siguiente» para seguir.");
+  ["pOirCorrecta", "pOirTuya", "pRepetir"].forEach(id => $(id).hidden = true);
+  $("pSiguiente").hidden = false; $("pSiguiente").textContent = "Siguiente";
+}
+$("pSiguiente").onclick = siguiente;
+$("pRepetir").onclick = () => pNota && tocar(pNota);
+$("pOirCorrecta").onclick = () => pNota && tocar(pNota);
+$("pOirTuya").onclick = () => pNota && pElegida && tocar({ ...pNota, en: pElegida });
 
-// ---------- sección "Escuchar": la nota en todas las octavas ----------
+// ======================= CANTAR =======================
+let cObjetivo = null, cCantada = null, micro = null, bucle = null;
+
+function cEstado(html, clase = "") { const e = $("cEstado"); e.innerHTML = html; e.className = "estado " + clase; }
+function cBotones(visibles) { ["cSiguiente", "cCantar", "cOirCorrecta", "cOirTuya"].forEach(id => $(id).hidden = !visibles.includes(id)); }
+
+async function siguienteCanto() {
+  const mia = ++ficha;
+  cObjetivo = selCantar.elegir(ajustes.activas); cCantada = null;
+  cBotones([]);
+  if (ajustes.borrador) { cEstado("Borrando…"); await borrar(); if (mia !== ficha) return; }
+  cEstado(`<small>Canta</small><span class="grande">${nombre(cObjetivo)}</span><small>Pulsa «Cantar» cuando la tengas en la cabeza.</small>`);
+  cBotones(["cCantar"]);
+}
+async function abrirMicro() {
+  if (micro) return micro;
+  if (!navigator.mediaDevices?.getUserMedia) throw new Error("sin-soporte");
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+  const c = getCtx(), fuente = c.createMediaStreamSource(stream), an = c.createAnalyser();
+  an.fftSize = 2048; fuente.connect(an);
+  micro = { stream, an, buf: new Float32Array(an.fftSize) };
+  return micro;
+}
+function pararMicro() {
+  if (bucle) { clearInterval(bucle); bucle = null; }
+  if (micro) { micro.stream.getTracks().forEach(t => t.stop()); micro = null; }
+  $("cNivelCaja").hidden = true;
+}
+// Detección de la frecuencia de la voz (autocorrelación normalizada, método McLeod)
+function detectarTono(buf, sr) {
+  let rms = 0; for (const v of buf) rms += v * v; rms = Math.sqrt(rms / buf.length);
+  if (rms < 0.01) return { rms, f: null };
+  const minLag = Math.floor(sr / 1100), maxLag = Math.min(Math.floor(sr / 70), buf.length >> 1);
+  const W = buf.length - maxLag, nsdf = new Float32Array(maxLag + 2);
+  let mejor = 0;
+  for (let lag = minLag; lag <= maxLag + 1; lag++) {
+    let acf = 0, m = 0;
+    for (let i = 0; i < W; i++) { const a = buf[i], b = buf[i + lag]; acf += a * b; m += a * a + b * b; }
+    nsdf[lag] = m ? 2 * acf / m : 0;
+    if (nsdf[lag] > mejor) mejor = nsdf[lag];
+  }
+  if (mejor < 0.6) return { rms, f: null };
+  for (let lag = minLag + 1; lag <= maxLag; lag++) {
+    if (nsdf[lag] >= 0.9 * mejor && nsdf[lag] >= nsdf[lag - 1] && nsdf[lag] >= nsdf[lag + 1]) {
+      const a = nsdf[lag - 1], b = nsdf[lag], c = nsdf[lag + 1], d = a - 2 * b + c;
+      const desp = d ? 0.5 * (a - c) / d : 0;
+      return { rms, f: sr / (lag + desp) };
+    }
+  }
+  return { rms, f: null };
+}
+async function cantar() {
+  const mia = ficha;
+  try { await abrirMicro(); }
+  catch (e) {
+    cEstado(e.message === "sin-soporte"
+      ? "El micrófono solo funciona abriendo la app desde su dirección web (https)."
+      : "No hay permiso para usar el micrófono. Actívalo en los ajustes del navegador.", "bad");
+    return;
+  }
+  if (mia !== ficha) return pararMicro();
+  cBotones([]); $("cNivelCaja").hidden = false;
+  cEstado(`<small>Canta</small><span class="grande">${nombre(cObjetivo)}</span><small>Escuchando… mantén la nota.</small>`);
+  const sr = getCtx().sampleRate, tonos = [], inicio = performance.now();
+  bucle = setInterval(() => {
+    micro.an.getFloatTimeDomainData(micro.buf);
+    const { rms, f } = detectarTono(micro.buf, sr);
+    $("cNivel").style.width = Math.min(100, rms * 600) + "%";
+    if (f) tonos.push(f);
+    const tiempo = performance.now() - inicio;
+    if (tonos.length >= 22 || tiempo > 8000) {
+      clearInterval(bucle); bucle = null; $("cNivelCaja").hidden = true;
+      evaluarCanto(tonos);
+    }
+  }, 45);
+}
+function evaluarCanto(tonos) {
+  if (tonos.length < 10) {
+    cEstado("No te he oído bien. Acércate al micrófono y canta un poco más fuerte.", "bad");
+    return cBotones(["cCantar"]);
+  }
+  // se descarta el principio (ataque) y se toma la mediana
+  const estables = tonos.slice(Math.floor(tonos.length * 0.3)).sort((a, b) => a - b);
+  const f = estables[Math.floor(estables.length / 2)];
+  const midi = 69 + 12 * Math.log2(f / 440), redondo = Math.round(midi);
+  const pc = ((redondo % 12) + 12) % 12, cents = Math.round((midi - redondo) * 100);
+  const cantada = NOTAS.find(n => n.pc === pc).en;
+  const octCant = Math.min(7, Math.max(1, Math.floor(redondo / 12) - 1));
+  // octava del objetivo más cercana a lo que cantaste
+  const octObj = OCTAVAS.reduce((m, o) => Math.abs(12 * (o + 1) + POR_EN[cObjetivo].pc - midi) <
+    Math.abs(12 * (m + 1) + POR_EN[cObjetivo].pc - midi) ? o : m, 4);
+  cCantada = { en: cantada, oct: octCant };
+  const desv = `${cents >= 0 ? "+" : "−"}${Math.abs(cents)} cents`;
+  const ok = cantada === cObjetivo;
+  if (ok) { selCantar.acierto(cObjetivo); cEstado(`<b>✓ ${nombre(cantada)}</b>Bien cantada (${desv})`, "ok"); }
+  else {
+    selCantar.fallo(cObjetivo, ajustes.activas.includes(cantada) ? cantada : null);
+    cEstado(`<b>✗ Era ${nombre(cObjetivo)}</b>Cantaste ${nombre(cantada)} (${desv})`, "bad");
+  }
+  cOirObjetivo = { en: cObjetivo, oct: octObj, timbre: "piano" };
+  tocar(cOirObjetivo);
+  cBotones(ok ? ["cSiguiente", "cOirCorrecta"] : ["cSiguiente", "cOirCorrecta", "cOirTuya"]);
+  $("cSiguiente").textContent = "Siguiente";
+}
+let cOirObjetivo = null;
+function pausarCanto() {
+  if (!cObjetivo) return;
+  cEstado("Pulsa «Siguiente» para seguir.");
+  cBotones(["cSiguiente"]); $("cSiguiente").textContent = "Siguiente";
+}
+$("cSiguiente").onclick = siguienteCanto;
+$("cCantar").onclick = cantar;
+$("cOirCorrecta").onclick = () => cOirObjetivo && tocar(cOirObjetivo);
+$("cOirTuya").onclick = () => cCantada && tocar({ ...cCantada, timbre: "piano" });
+
+// ======================= ESCUCHAR =======================
 const SEGMENTO = 2.6;   // segundos por octava en los archivos (2,2 s de nota + 0,4 s de pausa)
-const OCTAVAS_NOTA = { C: [1,2,3,4,5,6,7,8], A: [0,1,2,3,4,5,6,7], B: [0,1,2,3,4,5,6,7] };
-const octavasDe = en => OCTAVAS_NOTA[en] || [1,2,3,4,5,6,7];
+const OCTAVAS_NOTA = { C: [1, 2, 3, 4, 5, 6, 7, 8], A: [0, 1, 2, 3, 4, 5, 6, 7], Bb: [0, 1, 2, 3, 4, 5, 6, 7], B: [0, 1, 2, 3, 4, 5, 6, 7] };
+const octavasDe = en => OCTAVAS_NOTA[en] || OCTAVAS;
+const eTeclado = Teclado($("eTeclado"), en => escuchar(en));
 let escucha = null, escuchaNota = null;
-
 function pararEscucha() {
   if (escucha) { escucha.pause(); escucha.currentTime = 0; }
   escucha = null; escuchaNota = null;
@@ -375,8 +632,7 @@ function pararEscucha() {
 }
 function escuchar(en) {
   const misma = escuchaNota === en;
-  pararEscucha();
-  if (sonando) sonando.pause();
+  pararTodo();
   if (misma) return;                      // segundo toque = parar
   escuchaNota = en;
   escucha = new Audio(`escuchar/${en}.mp3`);
@@ -386,57 +642,133 @@ function escuchar(en) {
   pintarEscuchar();
 }
 function pintarEscuchar() {
-  const lista = $("listaEscuchar");
-  if (!lista.children.length) {
-    NOTAS.forEach(n => {
-      const b = document.createElement("button");
-      b.className = "resp"; b.textContent = n.es; b.dataset.en = n.en;
-      b.onclick = () => escuchar(n.en);
-      lista.appendChild(b);
-    });
-  }
-  [...lista.children].forEach(b => b.classList.toggle("sonando", b.dataset.en === escuchaNota));
-  const octs = $("octavasEscuchar");
+  eTeclado.pintar({ activas: NOTAS.map(n => n.en), mostrarNegras: true, sonando: escuchaNota });
+  const caja = $("eOctavas");
   if (!escuchaNota) {
-    $("estadoEscuchar").textContent = "Toca una nota para escucharla. Tócala otra vez para pararla.";
-    octs.innerHTML = "";
-    return;
+    $("eEstado").textContent = "Toca una nota para escucharla. Tócala otra vez para pararla.";
+    caja.innerHTML = ""; caja.dataset.nota = ""; return;
   }
-  const lista_o = octavasDe(escuchaNota);
-  const i = Math.min(lista_o.length - 1, Math.floor((escucha ? escucha.currentTime : 0) / SEGMENTO));
-  const nombre = NOTAS.find(n => n.en === escuchaNota).es;
-  $("estadoEscuchar").innerHTML = `<b>${nombre}${lista_o[i]}</b>Octava ${lista_o[i]}`;
-  if (octs.dataset.nota !== escuchaNota) {
-    octs.dataset.nota = escuchaNota;
-    octs.innerHTML = lista_o.map(o => `<span class="chip" data-o="${o}">${o}</span>`).join("");
+  const lista = octavasDe(escuchaNota);
+  const i = Math.min(lista.length - 1, Math.floor((escucha ? escucha.currentTime : 0) / SEGMENTO));
+  $("eEstado").innerHTML = `<b>${nombre(escuchaNota)} ${lista[i]}</b>Octava ${lista[i]}`;
+  if (caja.dataset.nota !== escuchaNota) {
+    caja.dataset.nota = escuchaNota;
+    caja.innerHTML = lista.map(o => `<span class="chip" data-o="${o}">${o}</span>`).join("");
   }
-  [...octs.children].forEach(c => c.classList.toggle("actual", +c.dataset.o === lista_o[i]));
+  [...caja.children].forEach(c => c.classList.toggle("on", +c.dataset.o === lista[i]));
 }
 
-function verPestana(cual) {
-  const esc = cual === "escuchar";
-  $("vistaEscuchar").hidden = !esc;
-  $("vistaPracticar").hidden = esc;
-  $("tabEscuchar").classList.toggle("on", esc);
-  $("tabPracticar").classList.toggle("on", !esc);
-  if (!esc) pararEscucha();
-  else { turno++; if (sonando) sonando.pause(); }   // pausa el ejercicio
-  if (esc && actual) {                          // el ejercicio queda en pausa
-    respondida = true; pintarRespuestas();
-    estado("Pulsa «Siguiente» para seguir practicando.");
-    mostrar(["repetir", "oirCorrecta", "oirTuya"], false);
-    $("siguiente").hidden = false; $("siguiente").textContent = "Siguiente";
-  }
-}
-$("tabPracticar").onclick = () => verPestana("practicar");
-$("tabEscuchar").onclick = () => verPestana("escuchar");
+// ======================= PRUEBA =======================
+const tTeclado = Teclado($("tTeclado"), en => responderPrueba(en));
+let prueba = null;     // { items: [{en, oct}], i, respuestas: [], esperando }
+const historial = () => leer("oa-pruebas", []);
 
+function fechaCorta(ms) { return new Date(ms).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" }); }
+function pintarPrueba() {
+  const enCurso = !!prueba;
+  $("tIntro").hidden = enCurso || $("tFin").dataset.visible === "1";
+  $("tCurso").hidden = !enCurso;
+  if (!enCurso && $("tFin").dataset.visible !== "1") {
+    const n = ajustes.activas.length, rep = Math.ceil(20 / n), h = historial(), ult = h[h.length - 1];
+    let txt = `<small>${n * rep} notas · ${rep} de cada nota en juego · octava al azar · piano · sin ayudas</small>`;
+    if (ult) {
+      const dias = Math.floor((Date.now() - ult.fecha) / 864e5);
+      txt += `<small>Última prueba: ${dias === 0 ? "hoy" : dias === 1 ? "ayer" : `hace ${dias} días`} (${Math.round(100 * ult.aciertos / ult.total)} %)</small>`;
+    } else txt += "<small>Aún no has hecho ninguna prueba.</small>";
+    $("tIntroTexto").innerHTML = txt;
+  }
+  if (enCurso) {
+    $("tProgreso").textContent = `Nota ${prueba.i + 1} de ${prueba.items.length}`;
+    tTeclado.pintar({ activas: prueba.activas, habilitado: !prueba.esperando });
+    if (!prueba.esperando) $("tEstado").innerHTML = "¿Qué nota es?<small>Pulsa «Repetir nota» si quieres oírla otra vez.</small>";
+  }
+  pintarHistorial();
+}
+function pintarHistorial() {
+  const h = historial();
+  if (!h.length || prueba) { $("tHistorial").innerHTML = ""; return; }
+  $("tHistorial").innerHTML = `<p class="label" style="margin-top:18px">Pruebas anteriores</p>
+    <table><tr><th>Fecha</th><th>Notas</th><th class="num">Acierto</th></tr>
+    ${h.slice(-10).reverse().map(p => `<tr><td>${fechaCorta(p.fecha)}</td><td>${p.notas === 12 ? "Las 12" : p.notas === 7 && p.soloNaturales ? "Naturales" : p.notas}</td>
+      <td class="num">${Math.round(100 * p.aciertos / p.total)} %</td></tr>`).join("")}</table>`;
+}
+function empezarPrueba() {
+  const activas = ajustes.activas.slice(), rep = Math.ceil(20 / activas.length);
+  let items = [];
+  activas.forEach(en => { for (let r = 0; r < rep; r++) items.push({ en, oct: azar(OCTAVAS), timbre: "piano" }); });
+  // barajar evitando la misma nota dos veces seguidas
+  for (let intento = 0; intento < 50; intento++) {
+    items.sort(() => Math.random() - 0.5);
+    if (items.every((x, i) => i === 0 || x.en !== items[i - 1].en)) break;
+  }
+  prueba = { activas, items, i: 0, respuestas: [], esperando: true };
+  $("tFin").dataset.visible = "0"; $("tFin").hidden = true;
+  pintarPrueba();
+  tocarPrueba();
+}
+async function tocarPrueba() {
+  const mia = ++ficha;
+  prueba.esperando = true; pintarPrueba();
+  $("tEstado").innerHTML = "Borrando…";
+  await borrar();
+  if (mia !== ficha || !prueba) return;
+  prueba.esperando = false; pintarPrueba();
+  tocar(prueba.items[prueba.i]);
+}
+function responderPrueba(en) {
+  if (!prueba || prueba.esperando) return;
+  prueba.respuestas.push(en);
+  prueba.i++;
+  if (prueba.i < prueba.items.length) return tocarPrueba();
+  terminarPrueba();
+}
+function terminarPrueba() {
+  const p = prueba; prueba = null;
+  const aciertos = p.items.filter((x, i) => x.en === p.respuestas[i]).length;
+  const h = historial();
+  h.push({ fecha: Date.now(), notas: p.activas.length, soloNaturales: p.activas.every(k => NATURALES.includes(k)), aciertos, total: p.items.length });
+  guardar("oa-pruebas", h);
+  const porNota = p.activas.map(en => {
+    const idx = p.items.map((x, i) => x.en === en ? i : -1).filter(i => i >= 0);
+    const bien = idx.filter(i => p.respuestas[i] === en).length;
+    const conf = idx.filter(i => p.respuestas[i] !== en).map(i => nombre(p.respuestas[i]));
+    return `<tr><td>${nombre(en)}</td><td class="num ${bien < idx.length ? "mal" : ""}">${bien} / ${idx.length}</td>
+      <td>${conf.length ? "la confundiste con " + [...new Set(conf)].join(", ") : ""}</td></tr>`;
+  }).join("");
+  const fin = $("tFin");
+  fin.innerHTML = `<div class="resultado">${Math.round(100 * aciertos / p.items.length)} %</div>
+    <div class="estado" style="min-height:0">${aciertos} de ${p.items.length} aciertos</div>
+    <table class="izq"><tr><th>Nota</th><th class="num">Aciertos</th><th></th></tr>${porNota}</table>
+    <div class="acciones"><button class="btn primario" id="tVolver">Hecho</button></div>`;
+  fin.dataset.visible = "1"; fin.hidden = false;
+  $("tVolver").onclick = () => { fin.dataset.visible = "0"; fin.hidden = true; pintarPrueba(); };
+  pintarPrueba();
+}
+$("tEmpezar").onclick = empezarPrueba;
+$("tRepetir").onclick = () => prueba && !prueba.esperando && tocar(prueba.items[prueba.i]);
+$("tCancelar").onclick = () => { ficha++; pararTodo(); prueba = null; pintarPrueba(); };
+
+// ======================= teclado físico =======================
+document.addEventListener("keydown", e => {
+  if (e.target.tagName === "INPUT" || e.ctrlKey || e.metaKey || e.altKey) return;
+  const en = tecladoANota(e.key);
+  if (vista === "practicar") {
+    if (en && ajustes.activas.includes(en)) responder(en);
+    else if (e.key === " " || e.key === "Enter") { e.preventDefault(); if (!$("pSiguiente").hidden) siguiente(); }
+    else if (e.key.toLowerCase() === "r" && pNota && !pRespondida) tocar(pNota);
+  } else if (vista === "prueba" && prueba) {
+    if (en && prueba.activas.includes(en)) responderPrueba(en);
+    else if (e.key.toLowerCase() === "r" && !prueba.esperando) tocar(prueba.items[prueba.i]);
+  } else if (vista === "cantar" && (e.key === " " || e.key === "Enter")) {
+    e.preventDefault();
+    if (!$("cCantar").hidden) cantar(); else if (!$("cSiguiente").hidden) siguienteCanto();
+  }
+});
+
+// ======================= inicio =======================
 pintarAjustes();
-pintarRespuestas();
-pintarEscuchar();
+verPestana("practicar");
 precargar();
-
-// instalación en el móvil y uso sin conexión (solo cuando se abre desde una web)
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
   navigator.serviceWorker.register("sw.js").catch(() => {});
 }
