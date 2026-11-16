@@ -319,6 +319,17 @@ function notasAcorde({ id, oct, inv = 0 }) {
   return m.map(desdeMidi);
 }
 
+// nombre de cada nota del acorde escrito como en una partitura (con ♯ o con ♭ según el acorde)
+function deletrear(id, en) {
+  const a = ACORDE[id], n = POR_EN[en];
+  if (!n.alt) return n.es;
+  const bemoles = nombreRaiz(a.raiz, a.tipo).includes("♭") || ["F", "Cm", "Fm", "Gm", "Dm"].includes(id);
+  return bemoles ? n.alt : n.es;
+}
+const INVERSIONES = ["posición fundamental", "primera inversión", "segunda inversión"];
+// "Do – Mi – La" (de grave a agudo) tal como sonó
+const ordenAcorde = s => notasAcorde(s).map(n => deletrear(s.id, n.en)).join(" – ");
+
 // =====================================================================
 //  ALMACENAMIENTO
 // =====================================================================
@@ -796,6 +807,14 @@ function responder(id) {
   pRespondida = true; pElegida = id;
   const ok = id === correcta, det = j.detalle(pNota), extra = det ? `<small>${det}</small>` : "";
   if (ok) { j.sel.acierto(id); pEstado(`<b>✓ ${j.nombre(id)}</b>Correcto${extra}`, "ok"); }
+  else if (pNota.tipo === "acorde") {
+    // acordes: qué notas sonaron (de grave a agudo) y cuáles tiene el que elegiste
+    j.sel.fallo(correcta, id);
+    pEstado(`<b>✗ Era ${j.nombre(correcta)}</b>
+      <small>Sonó en ${INVERSIONES[pNota.inv]}: <b style="font-size:inherit">${ordenAcorde(pNota)}</b> (de grave a agudo)</small>
+      <small>Elegiste ${j.nombre(id)}: ${ordenAcorde({ id, oct: 4, inv: 0 })}</small>`, "bad");
+    tocar(pNota);
+  }
   else { j.sel.fallo(correcta, id); pEstado(`<b>✗ Era ${j.nombre(correcta)}</b>Elegiste ${j.nombre(id)}${extra}`, "bad"); tocar(pNota); }
   pintarPractica({ correcta, erronea: ok ? null : id });
   $("pRepetir").hidden = true;
