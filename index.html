@@ -130,7 +130,7 @@
       <label class="switch">
         <input type="checkbox" id="referencia">
         <span>Do de referencia
-          <small>Puedes oír el Do de la octava en la que suena la nota. La nota no suena sola: tú eliges si oír antes el Do o la nota.</small>
+          <small>Un botón para oír el Do de la octava en la que suena la nota, antes o después de repetirla.</small>
         </span>
       </label>
     </div>
@@ -486,16 +486,9 @@ async function siguiente() {
   if (ajustes.borrador) { pEstado("Borrando…"); await borrar(); if (mia !== ficha) return; }
   pRespondida = false; pintarPractica();
   $("pRepetir").hidden = false;
-  if (ajustes.referencia) {
-    // con referencia, la nota no suena sola: el usuario elige el orden
-    pEstado("¿Qué nota es?<small>Escucha el Do de referencia o la nota, en el orden que quieras.</small>");
-    $("pRepetir").textContent = "Oír la nota";
-    $("pReferencia").hidden = false;
-  } else {
-    pEstado("¿Qué nota es?");
-    $("pRepetir").textContent = "Repetir nota";
-    tocar(pNota);
-  }
+  $("pReferencia").hidden = !ajustes.referencia;
+  pEstado(ajustes.referencia ? "¿Qué nota es?<small>Puedes oír el Do de referencia cuando quieras.</small>" : "¿Qué nota es?");
+  tocar(pNota);
 }
 // Do de la misma octava (y el mismo timbre) que la nota que hay que adivinar
 const tocarReferencia = () => pNota && tocar({ ...pNota, en: "C" });
