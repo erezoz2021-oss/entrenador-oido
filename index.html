@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Entrenador de Oído</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icono-192.png">
+<meta name="theme-color" content="#2f5d50">
+<style>
+  :root {
+    --bg: #f6f4ef; --card: #ffffff; --text: #1f1d1a; --muted: #6b665e;
+    --line: #e2ddd3; --accent: #2f5d50; --accent-text: #ffffff;
+    --ok: #2e7d4f; --ok-bg: #e5f3ea; --bad: #b3412f; --bad-bg: #f8e6e2;
+    --chip-off: #ece8e0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #171614; --card: #22201d; --text: #ece8e0; --muted: #a39d92;
+      --line: #36332e; --accent: #6fb39d; --accent-text: #10201b;
+      --ok: #7cc79a; --ok-bg: #1f3328; --bad: #e88b7a; --bad-bg: #3a2420;
+      --chip-off: #2d2a26;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+  main { max-width: 640px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 1.35rem; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 20px; font-size: .95rem; }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 16px; margin-bottom: 16px;
+  }
+  .label { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--muted); margin: 0 0 8px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .row + .label { margin-top: 16px; }
+  .chip {
+    border: 1px solid var(--line); background: var(--chip-off); color: var(--text);
+    border-radius: 999px; padding: 7px 14px; font-size: .95rem; cursor: pointer;
+  }
+  .chip.on { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  .switch { display: flex; align-items: center; gap: 10px; margin-top: 16px; cursor: pointer; }
+  .switch input { width: 18px; height: 18px; accent-color: var(--accent); }
+  .switch small { color: var(--muted); display: block; }
+
+  .stage { text-align: center; padding: 22px 16px; }
+  .estado { min-height: 3.2em; font-size: 1.05rem; color: var(--muted); margin-bottom: 14px;
+    display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 4px; }
+  .estado.ok { color: var(--ok); }
+  .estado.bad { color: var(--bad); }
+  .estado b { font-size: 1.6rem; }
+  .respuestas { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin: 8px 0 16px; }
+  .resp {
+    border: 1px solid var(--line); background: var(--card); color: var(--text);
+    border-radius: 10px; padding: 16px 0; font-size: 1.05rem; font-weight: 600; cursor: pointer;
+  }
+  .resp:disabled { opacity: .35; cursor: default; }
+  .resp.correcta { background: var(--ok-bg); border-color: var(--ok); color: var(--ok); opacity: 1; }
+  .resp.erronea { background: var(--bad-bg); border-color: var(--bad); color: var(--bad); opacity: 1; }
+  .acciones { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .btn {
+    border: 1px solid var(--line); background: var(--card); color: var(--text);
+    border-radius: 10px; padding: 10px 16px; font-size: .95rem; cursor: pointer;
+  }
+  .btn.primario { background: var(--accent); color: var(--accent-text); border-color: var(--accent);
+    font-weight: 600; padding: 12px 22px; }
+  .btn[hidden] { display: none; }
+  .ayuda { color: var(--muted); font-size: .82rem; text-align: center; margin-top: 12px; }
+  @media (max-width: 480px) {
+    .respuestas { grid-template-columns: repeat(4, 1fr); }
+    .resp { padding: 14px 0; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Entrenador de oído absoluto</h1>
+  <p class="sub">Escucha la nota y elige cuál es. Las que falles aparecerán más a menudo.</p>
+
+  <section class="card" aria-label="Ajustes">
+    <p class="label">Notas en juego</p>
+    <div class="row" id="notas"></div>
+    <p class="label">Octava</p>
+    <div class="row" id="octavas"></div>
+    <label class="switch">
+      <input type="checkbox" id="borrador" checked>
+      <span>Borrar la nota anterior
+        <small>Suena un ruido breve antes de cada nota para que no puedas compararla con la anterior.</small>
+      </span>
+    </label>
+  </section>
+
+  <section class="card stage" aria-live="polite">
+    <div class="estado" id="estado">Pulsa «Empezar» cuando estés listo.</div>
+    <div class="respuestas" id="respuestas"></div>
+    <div class="acciones">
+      <button class="btn primario" id="siguiente">Empezar</button>
+      <button class="btn" id="repetir" hidden>Repetir nota</button>
+      <button class="btn" id="oirCorrecta" hidden>Oír la correcta</button>
+      <button class="btn" id="oirTuya" hidden>Oír la que elegiste</button>
+    </div>
+    <p class="ayuda">Teclado: 1–7 para responder · Espacio = siguiente · R = repetir</p>
+  </section>
+</main>
+
+<script>
+const NOTAS = [
+  { es: "Do", en: "C" }, { es: "Re", en: "D" }, { es: "Mi", en: "E" }, { es: "Fa", en: "F" },
+  { es: "Sol", en: "G" }, { es: "La", en: "A" }, { es: "Si", en: "B" },
+];
+const OCTAVAS = [1, 2, 3, 4, 5, 6, 7];   // octavas donde existen todas las notas naturales
+
+// ---------- preferencias y pesos (se guardan en este navegador) ----------
+function leer(clave, defecto) {
+  try { const v = localStorage.getItem(clave); return v ? JSON.parse(v) : defecto; }
+  catch { return defecto; }
+}
+function guardar(clave, valor) {
+  try { localStorage.setItem(clave, JSON.stringify(valor)); } catch {}
+}
+const ajustes = Object.assign(
+  { activas: NOTAS.map(n => n.en), octava: "libre", borrador: true },
+  leer("oa-ajustes", {})
+);
+const pesos = Object.assign(Object.fromEntries(NOTAS.map(n => [n.en, 1])), leer("oa-pesos", {}));
+for (const k in pesos) pesos[k] = Math.min(4, pesos[k]);   // límite del refuerzo
+
+// ---------- audio ----------
+const cache = {};
+let sonando = null;
+function audio(en, oct) {
+  const k = en + oct;
+  if (!cache[k]) { cache[k] = new Audio(`notas/${k}.mp3`); cache[k].preload = "auto"; }
+  return cache[k];
+}
+function tocar(en, oct) {
+  if (sonando) { sonando.pause(); sonando.currentTime = 0; }
+  sonando = audio(en, oct);
+  sonando.currentTime = 0;
+  return sonando.play().catch(() => {});
+}
+function precargar() {
+  const octs = ajustes.octava === "libre" ? OCTAVAS : [ajustes.octava];
+  ajustes.activas.forEach(en => octs.forEach(o => audio(en, o)));
+}
+
+let ctx = null;
+// Ruido breve sin tonalidad: pitidos de frecuencia aleatoria (fuera de la escala) + ruido.
+function borrar() {
+  ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+  const t0 = ctx.currentTime + 0.05, dur = 1.3;
+  const salida = ctx.createGain(); salida.gain.value = 0.18; salida.connect(ctx.destination);
+  for (let i = 0; i < 18; i++) {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = "triangle";
+    const t = t0 + Math.random() * (dur - 0.15);
+    o.frequency.setValueAtTime(120 + Math.random() * 2500, t);
+    o.frequency.exponentialRampToValueAtTime(120 + Math.random() * 2500, t + 0.15);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.5, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+    o.connect(g).connect(salida); o.start(t); o.stop(t + 0.16);
+  }
+  const n = ctx.createBufferSource(), b = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate);
+  const d = b.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.25 * (1 - i / d.length);
+  n.buffer = b; n.connect(salida); n.start(t0);
+  return new Promise(r => setTimeout(r, (dur + 0.7) * 1000));   // + pausa de silencio
+}
+
+// ---------- lógica del ejercicio ----------
+let actual = null;        // { en, oct }
+let respondida = true;
+let turno = 0;            // evita que un "siguiente" antiguo pise uno nuevo
+
+// Tras un fallo, la nota fallada (y la que elegiste) quedan "en espera" un número
+// aleatorio de turnos, para que su vuelta no delate cuál es.
+const ESPERA_MIN = 4, ESPERA_MAX = 7;
+const PESO_MAX = 4;
+let ronda = 0;            // número de notas que han sonado
+const bloqueo = {};       // nota -> ronda a partir de la cual puede volver a salir
+
+function elegir() {
+  const activas = ajustes.activas;
+  // nunca la misma nota dos veces seguidas (si hay notas suficientes para no hacerlo predecible)
+  const posibles = actual && activas.length >= 4 ? activas.filter(k => k !== actual.en) : activas.slice();
+  let candidatas = posibles.filter(k => !(bloqueo[k] > ronda));
+  // si casi todas están en espera, se libera solo la que antes iba a volver (al menos 2 opciones)
+  const enEspera = posibles.filter(k => bloqueo[k] > ronda).sort((a, b) => bloqueo[a] - bloqueo[b]);
+  while (candidatas.length < 2 && enEspera.length) candidatas.push(enEspera.shift());
+  const total = candidatas.reduce((s, k) => s + pesos[k], 0);
+  let r = Math.random() * total;
+  const en = candidatas.find(k => (r -= pesos[k]) < 0) || candidatas[candidatas.length - 1];
+  let oct;
+  do {
+    oct = ajustes.octava === "libre"
+      ? OCTAVAS[Math.floor(Math.random() * OCTAVAS.length)] : ajustes.octava;
+  } while (ajustes.octava === "libre" && actual && en === actual.en && oct === actual.oct);
+  ronda++;
+  return { en, oct };
+}
+
+function esperar(k) {
+  bloqueo[k] = ronda + ESPERA_MIN + Math.floor(Math.random() * (ESPERA_MAX - ESPERA_MIN + 1));
+}
+
+async function siguiente() {
+  const mio = ++turno;
+  actual = elegir();
+  respondida = true;
+  pintarRespuestas();
+  mostrar(["oirCorrecta", "oirTuya", "repetir"], false);
+  $("siguiente").hidden = true;
+  if (ajustes.borrador) {
+    estado("Borrando…");
+    await borrar();
+    if (mio !== turno) return;
+  }
+  estado("¿Qué nota es?");
+  respondida = false;
+  pintarRespuestas();
+  $("repetir").hidden = false;
+  tocar(actual.en, actual.oct);
+}
+
+function responder(en) {
+  if (respondida || !actual) return;
+  respondida = true;
+  const nombre = k => NOTAS.find(n => n.en === k).es;
+  const acierto = en === actual.en;
+  if (acierto) {
+    pesos[en] = 1 + (pesos[en] - 1) * 0.6;
+    estado(`<b>✓ ${nombre(en)}</b>Correcto`, "ok");
+  } else {
+    // refuerzo suave: saldrán algo más a menudo, pero solo tras la espera
+    pesos[actual.en] = Math.min(PESO_MAX, pesos[actual.en] + 1);
+    pesos[en] = Math.min(PESO_MAX, pesos[en] + 0.5);   // también la nota con la que la confundiste
+    esperar(actual.en);
+    esperar(en);
+    estado(`<b>✗ Era ${nombre(actual.en)}</b>Elegiste ${nombre(en)}`, "bad");
+    tocar(actual.en, actual.oct);
+  }
+  guardar("oa-pesos", pesos);
+  pintarRespuestas(en);
+  ultimaElegida = en;
+  $("repetir").hidden = true;
+  $("oirCorrecta").hidden = acierto;
+  $("oirTuya").hidden = acierto;
+  $("siguiente").hidden = false;
+  $("siguiente").textContent = "Siguiente";
+  if (acierto) {
+    const mio = turno;
+    setTimeout(() => { if (mio === turno) siguiente(); }, 1400);
+  }
+}
+let ultimaElegida = null;
+
+// ---------- interfaz ----------
+const $ = id => document.getElementById(id);
+function mostrar(ids, visible) { ids.forEach(id => $(id).hidden = !visible); }
+function estado(html, clase = "") { const e = $("estado"); e.innerHTML = html; e.className = "estado " + clase; }
+
+function pintarAjustes() {
+  $("notas").innerHTML = "";
+  NOTAS.forEach(n => {
+    const b = document.createElement("button");
+    b.className = "chip" + (ajustes.activas.includes(n.en) ? " on" : "");
+    b.textContent = n.es;
+    b.onclick = () => {
+      const a = ajustes.activas;
+      if (a.includes(n.en)) { if (a.length > 2) a.splice(a.indexOf(n.en), 1); }
+      else a.push(n.en);
+      ajustes.activas = NOTAS.map(x => x.en).filter(k => a.includes(k));
+      cambiarAjustes();
+    };
+    $("notas").appendChild(b);
+  });
+  $("octavas").innerHTML = "";
+  ["libre", ...OCTAVAS].forEach(o => {
+    const b = document.createElement("button");
+    b.className = "chip" + (ajustes.octava === o ? " on" : "");
+    b.textContent = o === "libre" ? "Libre" : o;
+    b.title = o === "libre" ? "La aplicación elige la octava al azar" : `Solo la octava ${o}`;
+    b.onclick = () => { ajustes.octava = o; cambiarAjustes(); };
+    $("octavas").appendChild(b);
+  });
+  $("borrador").checked = ajustes.borrador;
+}
+function cambiarAjustes() {
+  guardar("oa-ajustes", ajustes);
+  pintarAjustes();
+  pintarRespuestas();
+  precargar();
+}
+
+function pintarRespuestas(elegida) {
+  $("respuestas").innerHTML = "";
+  NOTAS.forEach((n, i) => {
+    const b = document.createElement("button");
+    b.className = "resp";
+    b.textContent = n.es;
+    b.disabled = respondida || !ajustes.activas.includes(n.en);
+    if (elegida && actual) {
+      if (n.en === actual.en) b.classList.add("correcta");
+      else if (n.en === elegida) b.classList.add("erronea");
+    }
+    b.onclick = () => responder(n.en);
+    $("respuestas").appendChild(b);
+  });
+}
+
+$("borrador").onchange = e => { ajustes.borrador = e.target.checked; guardar("oa-ajustes", ajustes); };
+$("siguiente").onclick = siguiente;
+$("repetir").onclick = () => actual && tocar(actual.en, actual.oct);
+$("oirCorrecta").onclick = () => actual && tocar(actual.en, actual.oct);
+$("oirTuya").onclick = () => actual && ultimaElegida && tocar(ultimaElegida, actual.oct);
+
+document.addEventListener("keydown", e => {
+  if (e.target.tagName === "INPUT") return;
+  const n = parseInt(e.key, 10);
+  if (n >= 1 && n <= 7) {
+    const en = NOTAS[n - 1].en;
+    if (ajustes.activas.includes(en)) responder(en);
+  } else if (e.key === " " || e.key === "Enter") {
+    e.preventDefault();
+    if (!$("siguiente").hidden) siguiente();
+  } else if (e.key.toLowerCase() === "r" && actual && !respondida) {
+    tocar(actual.en, actual.oct);
+  }
+});
+
+pintarAjustes();
+pintarRespuestas();
+precargar();
+
+// instalación en el móvil y uso sin conexión (solo cuando se abre desde una web)
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+</script>
+</body>
+</html>
