@@ -70,6 +70,17 @@
   .btn.primario { background: var(--accent); color: var(--accent-text); border-color: var(--accent);
     font-weight: 600; padding: 12px 22px; }
   .btn[hidden] { display: none; }
+  .pestanas { display: flex; gap: 4px; background: var(--chip-off); border-radius: 12px;
+    padding: 4px; margin: 12px 0 16px; }
+  .pestana { flex: 1; border: 0; background: transparent; color: var(--muted); border-radius: 9px;
+    padding: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; }
+  .pestana.on { background: var(--card); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+  .escuchar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 14px; }
+  .escuchar .resp.sonando { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  .row.centro { justify-content: center; min-height: 36px; }
+  .chip.actual { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  #vistaEscuchar[hidden], #vistaPracticar[hidden] { display: none; }
+  @media (max-width: 480px) { .escuchar { grid-template-columns: repeat(4, 1fr); } }
   .ayuda { color: var(--muted); font-size: .82rem; text-align: center; margin-top: 12px; }
   @media (max-width: 480px) {
     .respuestas { grid-template-columns: repeat(4, 1fr); }
@@ -80,6 +91,21 @@
 <body>
 <main>
   <h1>Entrenador de oído absoluto</h1>
+  <nav class="pestanas" role="tablist">
+    <button class="pestana on" id="tabPracticar" role="tab">Practicar</button>
+    <button class="pestana" id="tabEscuchar" role="tab">Escuchar</button>
+  </nav>
+
+  <div id="vistaEscuchar" hidden>
+  <p class="sub">Escucha cada nota en todas las octavas del piano, de grave a agudo.</p>
+  <section class="card stage">
+    <div class="escuchar" id="listaEscuchar"></div>
+    <div class="estado" id="estadoEscuchar">Toca una nota para escucharla. Tócala otra vez para pararla.</div>
+    <div class="row centro" id="octavasEscuchar"></div>
+  </section>
+  </div>
+
+  <div id="vistaPracticar">
   <p class="sub">Escucha la nota y elige cuál es. Las que falles aparecerán más a menudo.</p>
 
   <section class="card" aria-label="Ajustes">
@@ -106,6 +132,7 @@
     </div>
     <p class="ayuda">Teclado: 1–7 para responder · Espacio = siguiente · R = repetir</p>
   </section>
+  </div>
 </main>
 
 <script>
@@ -139,6 +166,7 @@ function audio(en, oct) {
   return cache[k];
 }
 function tocar(en, oct) {
+  pararEscucha();
   if (sonando) { sonando.pause(); sonando.currentTime = 0; }
   sonando = audio(en, oct);
   sonando.currentTime = 0;
@@ -321,7 +349,7 @@ $("oirCorrecta").onclick = () => actual && tocar(actual.en, actual.oct);
 $("oirTuya").onclick = () => actual && ultimaElegida && tocar(ultimaElegida, actual.oct);
 
 document.addEventListener("keydown", e => {
-  if (e.target.tagName === "INPUT") return;
+  if (e.target.tagName === "INPUT" || $("vistaPracticar").hidden) return;
   const n = parseInt(e.key, 10);
   if (n >= 1 && n <= 7) {
     const en = NOTAS[n - 1].en;
@@ -334,8 +362,78 @@ document.addEventListener("keydown", e => {
   }
 });
 
+// ---------- sección "Escuchar": la nota en todas las octavas ----------
+const SEGMENTO = 2.6;   // segundos por octava en los archivos (2,2 s de nota + 0,4 s de pausa)
+const OCTAVAS_NOTA = { C: [1,2,3,4,5,6,7,8], A: [0,1,2,3,4,5,6,7], B: [0,1,2,3,4,5,6,7] };
+const octavasDe = en => OCTAVAS_NOTA[en] || [1,2,3,4,5,6,7];
+let escucha = null, escuchaNota = null;
+
+function pararEscucha() {
+  if (escucha) { escucha.pause(); escucha.currentTime = 0; }
+  escucha = null; escuchaNota = null;
+  pintarEscuchar();
+}
+function escuchar(en) {
+  const misma = escuchaNota === en;
+  pararEscucha();
+  if (sonando) sonando.pause();
+  if (misma) return;                      // segundo toque = parar
+  escuchaNota = en;
+  escucha = new Audio(`escuchar/${en}.mp3`);
+  escucha.ontimeupdate = pintarEscuchar;
+  escucha.onended = pararEscucha;
+  escucha.play().catch(() => {});
+  pintarEscuchar();
+}
+function pintarEscuchar() {
+  const lista = $("listaEscuchar");
+  if (!lista.children.length) {
+    NOTAS.forEach(n => {
+      const b = document.createElement("button");
+      b.className = "resp"; b.textContent = n.es; b.dataset.en = n.en;
+      b.onclick = () => escuchar(n.en);
+      lista.appendChild(b);
+    });
+  }
+  [...lista.children].forEach(b => b.classList.toggle("sonando", b.dataset.en === escuchaNota));
+  const octs = $("octavasEscuchar");
+  if (!escuchaNota) {
+    $("estadoEscuchar").textContent = "Toca una nota para escucharla. Tócala otra vez para pararla.";
+    octs.innerHTML = "";
+    return;
+  }
+  const lista_o = octavasDe(escuchaNota);
+  const i = Math.min(lista_o.length - 1, Math.floor((escucha ? escucha.currentTime : 0) / SEGMENTO));
+  const nombre = NOTAS.find(n => n.en === escuchaNota).es;
+  $("estadoEscuchar").innerHTML = `<b>${nombre}${lista_o[i]}</b>Octava ${lista_o[i]}`;
+  if (octs.dataset.nota !== escuchaNota) {
+    octs.dataset.nota = escuchaNota;
+    octs.innerHTML = lista_o.map(o => `<span class="chip" data-o="${o}">${o}</span>`).join("");
+  }
+  [...octs.children].forEach(c => c.classList.toggle("actual", +c.dataset.o === lista_o[i]));
+}
+
+function verPestana(cual) {
+  const esc = cual === "escuchar";
+  $("vistaEscuchar").hidden = !esc;
+  $("vistaPracticar").hidden = esc;
+  $("tabEscuchar").classList.toggle("on", esc);
+  $("tabPracticar").classList.toggle("on", !esc);
+  if (!esc) pararEscucha();
+  else { turno++; if (sonando) sonando.pause(); }   // pausa el ejercicio
+  if (esc && actual) {                          // el ejercicio queda en pausa
+    respondida = true; pintarRespuestas();
+    estado("Pulsa «Siguiente» para seguir practicando.");
+    mostrar(["repetir", "oirCorrecta", "oirTuya"], false);
+    $("siguiente").hidden = false; $("siguiente").textContent = "Siguiente";
+  }
+}
+$("tabPracticar").onclick = () => verPestana("practicar");
+$("tabEscuchar").onclick = () => verPestana("escuchar");
+
 pintarAjustes();
 pintarRespuestas();
+pintarEscuchar();
 precargar();
 
 // instalación en el móvil y uso sin conexión (solo cuando se abre desde una web)

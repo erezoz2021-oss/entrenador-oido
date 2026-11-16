@@ -1,9 +1,11 @@
 // Permite usar la app sin conexión: guarda la página y todas las notas en el móvil.
 // Al cambiar la app, sube VERSION para que el móvil descargue la nueva.
-const VERSION = "oido-v1";
+const VERSION = "oido-v2";
 const NOTAS = [];
-for (const n of ["C", "D", "E", "F", "G", "A", "B"])
+for (const n of ["C", "D", "E", "F", "G", "A", "B"]) {
   for (let o = 1; o <= 7; o++) NOTAS.push(`notas/${n}${o}.mp3`);
+  NOTAS.push(`escuchar/${n}.mp3`);           // la nota en todas las octavas
+}
 const ARCHIVOS = ["./", "index.html", "manifest.json", "icono-192.png", "icono-512.png", ...NOTAS];
 
 self.addEventListener("install", e => {
