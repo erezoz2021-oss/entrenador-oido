@@ -126,6 +126,14 @@
       <p class="label">Timbre</p>
       <div class="row" id="chipsTimbre"></div>
     </div>
+    <div class="bloque" data-solo="practicar">
+      <label class="switch">
+        <input type="checkbox" id="referencia">
+        <span>Do de referencia
+          <small>Puedes oír el Do de la octava en la que suena la nota. La nota no suena sola: tú eliges si oír antes el Do o la nota.</small>
+        </span>
+      </label>
+    </div>
     <div class="bloque" data-solo="practicar cantar">
       <label class="switch">
         <input type="checkbox" id="borrador" checked>
@@ -142,11 +150,12 @@
     <div id="pTeclado"></div>
     <div class="acciones">
       <button class="btn primario" id="pSiguiente">Empezar</button>
+      <button class="btn" id="pReferencia" hidden>Do de referencia</button>
       <button class="btn" id="pRepetir" hidden>Repetir nota</button>
       <button class="btn" id="pOirCorrecta" hidden>Oír la correcta</button>
       <button class="btn" id="pOirTuya" hidden>Oír la que elegiste</button>
     </div>
-    <p class="ayuda">Teclado: A W S E D F T G Y H U J (como un piano) o 1–7 · Espacio = siguiente · R = repetir</p>
+    <p class="ayuda">Teclado: A W S E D F T G Y H U J (como un piano) o 1–7 · Espacio = siguiente · R = oír la nota · Q = Do de referencia</p>
   </section>
 
   <!-- CANTAR -->
@@ -215,7 +224,7 @@ function leer(clave, defecto) {
 function guardar(clave, valor) { try { localStorage.setItem(clave, JSON.stringify(valor)); } catch {} }
 
 const ajustes = Object.assign(
-  { activas: NATURALES.slice(), octava: "libre", borrador: true, timbre: "piano" },
+  { activas: NATURALES.slice(), octava: "libre", borrador: true, timbre: "piano", referencia: false },
   leer("oa-ajustes", {})
 );
 ajustes.activas = NOTAS.map(n => n.en).filter(k => ajustes.activas.includes(k));
@@ -440,6 +449,7 @@ function pintarAjustes() {
     $("chipsTimbre").appendChild(b);
   });
   $("borrador").checked = ajustes.borrador;
+  $("referencia").checked = ajustes.referencia;
 }
 function cambiarAjustes() {
   guardar("oa-ajustes", ajustes);
@@ -449,6 +459,10 @@ function cambiarAjustes() {
   precargar();
 }
 $("borrador").onchange = e => { ajustes.borrador = e.target.checked; guardar("oa-ajustes", ajustes); };
+$("referencia").onchange = e => {
+  ajustes.referencia = e.target.checked; guardar("oa-ajustes", ajustes);
+  if (pNota && !pRespondida) $("pReferencia").hidden = !ajustes.referencia;   // aplicarlo a la nota en curso
+};
 $("soloNaturales").onclick = () => { ajustes.activas = NATURALES.slice(); cambiarAjustes(); };
 $("todas").onclick = () => { ajustes.activas = NOTAS.map(n => n.en); cambiarAjustes(); };
 
@@ -468,13 +482,23 @@ async function siguiente() {
   while (ajustes.octava === "libre" && pNota && pNota.en === en && pNota.oct === oct);
   pNota = { en, oct, timbre: elegirTimbre(oct) };
   pRespondida = true; pintarPractica();
-  ["pOirCorrecta", "pOirTuya", "pRepetir", "pSiguiente"].forEach(id => $(id).hidden = true);
+  ["pOirCorrecta", "pOirTuya", "pRepetir", "pReferencia", "pSiguiente"].forEach(id => $(id).hidden = true);
   if (ajustes.borrador) { pEstado("Borrando…"); await borrar(); if (mia !== ficha) return; }
-  pEstado("¿Qué nota es?");
   pRespondida = false; pintarPractica();
   $("pRepetir").hidden = false;
-  tocar(pNota);
+  if (ajustes.referencia) {
+    // con referencia, la nota no suena sola: el usuario elige el orden
+    pEstado("¿Qué nota es?<small>Escucha el Do de referencia o la nota, en el orden que quieras.</small>");
+    $("pRepetir").textContent = "Oír la nota";
+    $("pReferencia").hidden = false;
+  } else {
+    pEstado("¿Qué nota es?");
+    $("pRepetir").textContent = "Repetir nota";
+    tocar(pNota);
+  }
 }
+// Do de la misma octava (y el mismo timbre) que la nota que hay que adivinar
+const tocarReferencia = () => pNota && tocar({ ...pNota, en: "C" });
 function responder(en) {
   if (pRespondida || !pNota) return;
   pRespondida = true; pElegida = en;
@@ -488,6 +512,7 @@ function responder(en) {
   }
   pintarPractica({ correcta: pNota.en, erronea: ok ? null : en });
   $("pRepetir").hidden = true;
+  $("pReferencia").hidden = !ajustes.referencia;
   $("pOirCorrecta").hidden = $("pOirTuya").hidden = ok;
   $("pSiguiente").hidden = false; $("pSiguiente").textContent = "Siguiente";
   if (ok) { const mia = ficha; setTimeout(() => { if (mia === ficha && vista === "practicar") siguiente(); }, 1400); }
@@ -496,10 +521,11 @@ function pausarPractica() {
   if (!pNota) return pintarPractica();
   pRespondida = true; pintarPractica();
   pEstado("Pulsa «Siguiente» para seguir.");
-  ["pOirCorrecta", "pOirTuya", "pRepetir"].forEach(id => $(id).hidden = true);
+  ["pOirCorrecta", "pOirTuya", "pRepetir", "pReferencia"].forEach(id => $(id).hidden = true);
   $("pSiguiente").hidden = false; $("pSiguiente").textContent = "Siguiente";
 }
 $("pSiguiente").onclick = siguiente;
+$("pReferencia").onclick = tocarReferencia;
 $("pRepetir").onclick = () => pNota && tocar(pNota);
 $("pOirCorrecta").onclick = () => pNota && tocar(pNota);
 $("pOirTuya").onclick = () => pNota && pElegida && tocar({ ...pNota, en: pElegida });
@@ -756,6 +782,7 @@ document.addEventListener("keydown", e => {
     if (en && ajustes.activas.includes(en)) responder(en);
     else if (e.key === " " || e.key === "Enter") { e.preventDefault(); if (!$("pSiguiente").hidden) siguiente(); }
     else if (e.key.toLowerCase() === "r" && pNota && !pRespondida) tocar(pNota);
+    else if (e.key.toLowerCase() === "q" && ajustes.referencia && !$("pReferencia").hidden) tocarReferencia();
   } else if (vista === "prueba" && prueba) {
     if (en && prueba.activas.includes(en)) responderPrueba(en);
     else if (e.key.toLowerCase() === "r" && !prueba.esperando) tocar(prueba.items[prueba.i]);
