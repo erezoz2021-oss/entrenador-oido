@@ -217,8 +217,6 @@
       <button class="btn primario" id="pSiguiente">Empezar</button>
       <button class="btn" id="pReferencia" hidden>Do de referencia</button>
       <button class="btn" id="pRepetir" hidden>Repetir</button>
-      <button class="btn" id="pOirCorrecta" hidden>Oír la correcta</button>
-      <button class="btn" id="pOirTuya" hidden>Oír la que elegiste</button>
     </div>
     <p class="ayuda" data-modo="notas">Teclado: A W S E D F T G Y H U J (como un piano) o 1–7 · Espacio = siguiente · R = repetir · Q = Do de referencia</p>
     <p class="ayuda" data-modo="acordes">Teclado: 1–9 para responder (en el orden de los botones) · Espacio = siguiente · R = repetir</p>
@@ -491,10 +489,10 @@ function Teclado(cont, alPulsar) {
     cont.appendChild(b); teclas[n.en] = b;
   });
   return {
-    pintar({ activas = [], habilitado = true, correcta = null, erronea = null, sonando = null, mostrarNegras = null } = {}) {
+    pintar({ activas = [], habilitado = true, habilitadas = [], correcta = null, erronea = null, sonando = null, mostrarNegras = null } = {}) {
       cont.classList.toggle("sin-negras", !(mostrarNegras ?? activas.some(k => POR_EN[k].alt)));
       for (const [en, b] of Object.entries(teclas)) {
-        b.disabled = !habilitado || !activas.includes(en);
+        b.disabled = !activas.includes(en) || !(habilitado || habilitadas.includes(en));
         b.classList.toggle("correcta", en === correcta); b.classList.toggle("erronea", en === erronea); b.classList.toggle("sonando", en === sonando);
       }
     },
@@ -515,10 +513,10 @@ function BotonesAcordes(cont, alPulsar) {
     cont.appendChild(g); grupos[t] = g;
   }
   return {
-    pintar({ activas = [], habilitado = true, correcta = null, erronea = null, sonando = null, todos = false } = {}) {
+    pintar({ activas = [], habilitado = true, habilitadas = [], correcta = null, erronea = null, sonando = null, todos = false } = {}) {
       for (const [id, b] of Object.entries(botones)) {
         b.hidden = !todos && !activas.includes(id);
-        b.disabled = !habilitado;
+        b.disabled = !(habilitado || habilitadas.includes(id));
         b.classList.toggle("correcta", id === correcta); b.classList.toggle("erronea", id === erronea); b.classList.toggle("sonando", id === sonando);
       }
       for (const t of ["M", "m"]) grupos[t].hidden = !todos && !activas.some(id => ACORDE[id].tipo === t);
@@ -715,7 +713,7 @@ function verModo(modo) {
   document.querySelectorAll("[data-modo-btn]").forEach(b => b.classList.toggle("on", b.dataset.modoBtn === modo));
   pNota = null; pRespondida = true;
   pEstado("Pulsa «Empezar» cuando estés listo."); $("pSiguiente").textContent = "Empezar";
-  ["pOirCorrecta", "pOirTuya", "pRepetir", "pReferencia"].forEach(id => $(id).hidden = true); $("pSiguiente").hidden = false;
+  pComparar = null; ["pRepetir", "pReferencia"].forEach(id => $(id).hidden = true); $("pSiguiente").hidden = false;
   $("tFin").dataset.visible = "0"; $("tFin").hidden = true;
   verPestana(estado.vista);
 }
@@ -778,19 +776,26 @@ $("todas").onclick = () => { ajustes.activas = TODAS.slice(); cambiarAjustes(); 
 // =====================================================================
 //  PRACTICAR
 // =====================================================================
-const pResp = { notas: Teclado($("pTeclado"), id => responder(id)), acordes: BotonesAcordes($("pAcordes"), id => responder(id)) };
+const pResp = { notas: Teclado($("pTeclado"), id => pulsar(id)), acordes: BotonesAcordes($("pAcordes"), id => pulsar(id)) };
+// tras un fallo, la tecla correcta y la elegida se pueden pulsar para oírlas y compararlas
+let pComparar = null;
+function pulsar(id) {
+  if (!pRespondida) return responder(id);
+  if (pComparar && pComparar.includes(id)) tocar(juego().con(pNota, id));
+}
 let pNota = null, pRespondida = true, pElegida = null;
 function pEstado(html, clase = "") { const e = $("pEstado"); e.innerHTML = html; e.className = "estado " + clase; }
 function pintarPractica(marcas = {}) {
-  pResp.notas.pintar({ activas: ajustes.activas, habilitado: !pRespondida, ...(estado.modo === "notas" ? marcas : {}) });
-  pResp.acordes.pintar({ activas: ajustesAc.activos, habilitado: !pRespondida, ...(estado.modo === "acordes" ? marcas : {}) });
+  const habilitadas = pComparar || [];
+  pResp.notas.pintar({ activas: ajustes.activas, habilitado: !pRespondida, habilitadas, ...(estado.modo === "notas" ? marcas : {}) });
+  pResp.acordes.pintar({ activas: ajustesAc.activos, habilitado: !pRespondida, habilitadas, ...(estado.modo === "acordes" ? marcas : {}) });
 }
 async function siguiente() {
   const mia = ++ficha, j = juego();
   const id = j.sel.elegir(j.activos());
   pNota = j.sonido(id, pNota);
-  pRespondida = true; pintarPractica();
-  ["pOirCorrecta", "pOirTuya", "pRepetir", "pReferencia", "pSiguiente"].forEach(x => $(x).hidden = true);
+  pComparar = null; pRespondida = true; pintarPractica();
+  ["pRepetir", "pReferencia", "pSiguiente"].forEach(x => $(x).hidden = true);
   if (ajustes.borrador) { pEstado("Borrando…"); await borrar(); if (mia !== ficha) return; }
   pRespondida = false; pintarPractica();
   $("pRepetir").hidden = false;
@@ -812,14 +817,15 @@ function responder(id) {
     j.sel.fallo(correcta, id);
     pEstado(`<b>✗ Era ${j.nombre(correcta)}</b>
       <small>Sonó en ${INVERSIONES[pNota.inv]}: <b style="font-size:inherit">${ordenAcorde(pNota)}</b> (de grave a agudo)</small>
-      <small>Elegiste ${j.nombre(id)}: ${ordenAcorde({ id, oct: 4, inv: 0 })}</small>`, "bad");
+      <small>Elegiste ${j.nombre(id)}: ${ordenAcorde({ id, oct: 4, inv: 0 })}</small>
+      <small>Toca los dos acordes marcados para oírlos y compararlos.</small>`, "bad");
     tocar(pNota);
   }
-  else { j.sel.fallo(correcta, id); pEstado(`<b>✗ Era ${j.nombre(correcta)}</b>Elegiste ${j.nombre(id)}${extra}`, "bad"); tocar(pNota); }
+  else { j.sel.fallo(correcta, id); pEstado(`<b>✗ Era ${j.nombre(correcta)}</b>Elegiste ${j.nombre(id)}${extra}<small>Toca las dos notas marcadas para oírlas y compararlas.</small>`, "bad"); tocar(pNota); }
+  pComparar = ok ? null : [correcta, id];
   pintarPractica({ correcta, erronea: ok ? null : id });
   $("pRepetir").hidden = true;
   $("pReferencia").hidden = !(estado.modo === "notas" && ajustes.referencia);
-  $("pOirCorrecta").hidden = $("pOirTuya").hidden = ok;
   $("pSiguiente").hidden = false; $("pSiguiente").textContent = "Siguiente";
   if (ok) { const mia = ficha; setTimeout(() => { if (mia === ficha && estado.vista === "practicar") siguiente(); }, 1400); }
 }
@@ -828,14 +834,13 @@ function pausarPractica() {
   if (!pNota) return;
   pRespondida = true; pintarPractica();
   pEstado("Pulsa «Siguiente» para seguir.");
-  ["pOirCorrecta", "pOirTuya", "pRepetir", "pReferencia"].forEach(x => $(x).hidden = true);
+  pComparar = null; pintarPractica();
+  ["pRepetir", "pReferencia"].forEach(x => $(x).hidden = true);
   $("pSiguiente").hidden = false; $("pSiguiente").textContent = "Siguiente";
 }
 $("pSiguiente").onclick = siguiente;
 $("pReferencia").onclick = tocarReferencia;
 $("pRepetir").onclick = () => pNota && tocar(pNota);
-$("pOirCorrecta").onclick = () => pNota && tocar(pNota);
-$("pOirTuya").onclick = () => pNota && pElegida && tocar(juego().con(pNota, pElegida));
 
 // =====================================================================
 //  CANTAR (solo notas sueltas)
