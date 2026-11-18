@@ -1021,7 +1021,11 @@ function responder(id) {
   else { j.sel.fallo(correcta, id); pEstado(`<b>✗ Era ${j.nombre(correcta)}</b>Elegiste ${j.nombre(id)}${extra}<small>Toca las dos notas marcadas para oírlas y compararlas.</small>`, "bad"); tocar(pNota); }
   pComparar = ok ? null : [correcta, id];
   // ficha de la nota: solo al fallar (y solo en notas sueltas)
-  if (!ok && pNota.tipo === "nota") { $("pFicha").innerHTML = fichaNota(pNota.en, pNota.oct); $("pFicha").hidden = false; }
+  if (!ok && pNota.tipo === "nota") {
+    $("pFicha").innerHTML = fichaNota(pNota.en, pNota.oct); $("pFicha").hidden = false;
+    const b = $("pFicha").querySelector("[data-contexto]");
+    if (b) b.onclick = () => tocarContexto(pNota.en, pNota.oct);
+  }
   if (!ok && pNota.tipo === "intervalo") { $("pFicha").innerHTML = fichaIntervalo(pNota); $("pFicha").hidden = false; }
   pintarPractica({ correcta, erronea: ok ? null : id });
   $("pRepetir").hidden = true;
@@ -1270,11 +1274,43 @@ function miniPiano(marcas) {
   const zona = `<rect class="zona" x="${x3}" y="44" width="${3 * 70}" height="5" rx="2" />`;
   return `<svg class="minipiano" viewBox="0 0 ${x} 62" role="img" aria-label="Posición en el piano">${blancas}${negras}${zona}${etiquetas}</svg>`;
 }
+// función de cada nota dentro de Do mayor (la misma referencia que el botón "Do"):
+// sensación (reposo / tensión) y hacia dónde tiende a resolver (semitonos, 0 = ya reposa)
+const FUNCION = {
+  0:  { s: "reposo total", t: "Es la tónica: la casa. Suena a final, nada pide moverse.", r: 0 },
+  1:  { s: "tensión fuerte (cromática)", t: "No pertenece a Do mayor: roza al Do y al Re y chirría. Tiende a subir a Re.", r: 1 },
+  2:  { s: "tensión suave", t: "Suena a «de paso», a frase sin terminar. Tiende a bajar a Do.", r: -2 },
+  3:  { s: "tensión con color menor (cromática)", t: "Fuera de Do mayor: oscurece, suena triste o «blues». Tiende a bajar a Re.", r: -1 },
+  4:  { s: "reposo luminoso", t: "Es la 3ª del acorde de Do: estable y brillante, da el color mayor.", r: 0 },
+  5:  { s: "tensión", t: "Queda suspendida, pesa hacia abajo: tiende a caer medio tono a Mi.", r: -1 },
+  6:  { s: "tensión muy fuerte (cromática)", t: "El tritono de Do, la nota más lejana: inquieta, «empuja» a subir a Sol.", r: 1 },
+  7:  { s: "reposo abierto", t: "Es la 5ª del acorde: estable, firme y hueca, menos final que el Do.", r: 0 },
+  8:  { s: "tensión oscura (cromática)", t: "Fuera de Do mayor: dramática, melancólica. Tiende a bajar a Sol.", r: -1 },
+  9:  { s: "tensión suave", t: "Suena a suspiro, algo nostálgica. Tiende a bajar a Sol.", r: -2 },
+  10: { s: "tensión relajada (cromática)", t: "Fuera de Do mayor: color «blues» o de rock. Tiende a bajar a La.", r: -1 },
+  11: { s: "tensión máxima", t: "Es la sensible: está a medio tono del Do y casi obliga a subir a él.", r: 1 },
+};
+// Do mayor (acorde) -> la nota -> su resolución, para sentir la tensión o el reposo
+function tocarContexto(en, oct) {
+  const m = 12 * (oct + 1) + POR_EN[en].pc, f = FUNCION[POR_EN[en].pc];
+  const base = 12 * (Math.min(5, Math.max(3, oct)) + 1);
+  const ev = [0, 4, 7].map(d => ({ midi: base + d, t: 0, dur: 1.3 }));
+  ev.push({ midi: m, t: 1.5, dur: f.r ? 1.3 : 2.0 });
+  if (f.r) ev.push({ midi: m + f.r, t: 3.0, dur: 1.8 });
+  pararTodo();
+  tocarEventos(ev, ++fichaSonido);
+}
 function fichaNota(en, oct) {
-  const r = REGISTRO[oct] || { p: "", t: "" }, a = anclas[en] || {};
+  const r = REGISTRO[oct] || { p: "", t: "" }, a = anclas[en] || {}, f = FUNCION[POR_EN[en].pc];
+  const destino = f.r ? desdeMidi(12 * (oct + 1) + POR_EN[en].pc + f.r) : null;
   return `<div class="ficha-nota">
     <div class="cab"><b>${nombre(en)}${oct}</b> · ${frec(en, oct).toFixed(1)} Hz · octava ${oct}${r.p ? ` (prioridad ${r.p})` : ""}</div>
     <p>${r.t}</p>
+    <p>🎚 <b>En Do mayor: ${f.s}.</b> ${f.t}</p>
+    <div class="acciones" style="justify-content:flex-start;margin:4px 0 8px">
+      <button class="btn peque" data-contexto="${en}${oct}">Oír en contexto</button>
+    </div>
+    <p class="apagado" style="font-size:.78rem;margin-top:0">Suena el acorde de Do, luego ${nombre(en)}${destino ? ` y su resolución (${nombre(destino.en)})` : " reposando"}. La tensión depende de la tonalidad: aquí se toma Do como referencia, igual que el «Do de referencia».</p>
     ${miniPiano([{ en, oct }])}
     <p class="apagado" style="font-size:.78rem;margin-top:0">Barra verde: octavas 3 a 5 (prioridad alta)</p>
     ${a.ancla ? `<p>⚓ <b>Tu ancla:</b> ${esc(a.ancla)}</p>` : `<p class="apagado">Aún no tienes ancla para ${nombre(en)}. Puedes añadirla en Escuchar → Mis anclas.</p>`}
