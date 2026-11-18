@@ -36,6 +36,7 @@
   .chip { border: 1px solid var(--line); background: var(--chip-off); color: var(--text);
     border-radius: 999px; padding: 6px 12px; font-size: .9rem; cursor: pointer; }
   .chip.on { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  .chip.media { border-style: dashed; }
   .chip.mini { font-size: .8rem; padding: 4px 10px; background: transparent; }
   .switch { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
   .switch input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--accent); }
@@ -115,6 +116,19 @@
   .lista-fases li.actual .marca { color: var(--accent); }
   .lista-fases li button { margin-left: auto; }
   details summary { cursor: pointer; color: var(--muted); font-size: .9rem; }
+  .ficha-nota { margin-top: 16px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); font-size: .9rem; }
+  .ficha-nota .cab { font-size: 1rem; margin-bottom: 4px; }
+  .ficha-nota p { margin: 6px 0; }
+  .apagado { color: var(--muted); }
+  .minipiano { width: 100%; height: auto; margin: 6px 0 2px; display: block; }
+  .minipiano .w { fill: var(--card); stroke: var(--line); }
+  .minipiano .b { fill: var(--negra); }
+  .minipiano .on { fill: var(--bad); stroke: var(--bad); }
+  .minipiano .zona { fill: var(--accent); opacity: .45; }
+  .minipiano text { fill: var(--muted); font-size: 7.5px; font-family: inherit; }
+  .campo { width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--card); color: var(--text); font-size: .95rem; font-family: inherit; }
+  .anclas td:first-child { font-weight: 600; white-space: nowrap; }
+  .anclas tr { cursor: pointer; }
   .rutina { margin: 6px 0 0; padding-left: 1.2em; font-size: .92rem; }
   .rutina li { margin: 4px 0; }
 </style>
@@ -155,6 +169,7 @@
     <div class="bloque" data-modo="notas" data-solo="practicar prueba">
       <p class="label">Octava</p>
       <div class="row" id="chipsOctavas"></div>
+      <p class="ayuda" style="text-align:left;margin-top:6px">Prioridad alta: 3, 4 y 5 · media: 2 y 6</p>
     </div>
     <div class="bloque" data-modo="notas" data-solo="practicar">
       <p class="label">Timbre</p>
@@ -218,6 +233,7 @@
       <button class="btn" id="pReferencia" hidden>Do de referencia</button>
       <button class="btn" id="pRepetir" hidden>Repetir</button>
     </div>
+    <div id="pFicha" class="izq" hidden></div>
     <p class="ayuda" data-modo="notas">Teclado: A W S E D F T G Y H U J (como un piano) o 1–7 · Espacio = siguiente · R = repetir · Q = Do de referencia</p>
     <p class="ayuda" data-modo="acordes">Teclado: 1–9 para responder (en el orden de los botones) · Espacio = siguiente · R = repetir</p>
   </section>
@@ -241,11 +257,28 @@
       <div id="eTeclado"></div>
       <div class="estado" id="eEstado" style="margin-top:14px"></div>
       <div class="row" id="eOctavas" style="justify-content:center;min-height:34px"></div>
+      <p class="ayuda">Octavas 3, 4 y 5: prioridad alta · 2 y 6 (borde discontinuo): prioridad media</p>
     </div>
     <div data-modo="acordes">
       <div id="eAcordes"></div>
       <div class="estado" id="eEstadoAc" style="margin-top:14px">Toca un acorde para escucharlo.</div>
     </div>
+  </section>
+
+  <section class="card" data-vista="escuchar" data-modo="notas" hidden>
+    <h2>Mis anclas</h2>
+    <p class="sub">Canciones que conoces muy bien (siempre en la misma grabación) y que empiezan en cada nota. Aparecen en la ficha cuando fallas esa nota. También puedes escribir una descripción personal de cada nota.</p>
+    <div class="acciones" style="justify-content:flex-start;margin-top:0">
+      <button class="btn primario" id="aBuscar">🎤 Buscar un ancla cantando</button>
+    </div>
+    <div id="aCaptura" hidden>
+      <div class="estado" id="aEstado"></div>
+      <div class="nivel" id="aNivelCaja" hidden><div id="aNivel"></div></div>
+      <div id="aResultado"></div>
+    </div>
+    <div id="aEditor" hidden></div>
+    <table class="anclas"><thead><tr><th>Nota</th><th>Ancla y descripción</th></tr></thead><tbody id="aTabla"></tbody></table>
+    <p class="ayuda" style="text-align:left">Toca una nota de la tabla para escribir o cambiar su ancla y su descripción.</p>
   </section>
 
   <!-- ================= PRUEBA ================= -->
@@ -289,7 +322,7 @@ const nombre = en => { const n = POR_EN[en]; return n.alt ? `${n.es}/${n.alt}` :
 const nombreRaiz = (en, tipo = "M") => (tipo === "m"
   ? { Db: "Do♯", Eb: "Mi♭", Gb: "Fa♯", Ab: "Sol♯", Bb: "Si♭" }
   : { Db: "Re♭", Eb: "Mi♭", Gb: "Fa♯", Ab: "La♭", Bb: "Si♭" })[en] || POR_EN[en].es;
-const OCTAVAS = [1, 2, 3, 4, 5, 6, 7];
+const OCTAVAS = [2, 3, 4, 5, 6];          // prioridad alta: 3-5 · media: 2 y 6
 const frec = (en, oct) => 440 * 2 ** ((12 * (oct + 1) + POR_EN[en].pc - 69) / 12);
 const desdeMidi = m => ({ en: NOTAS[((m % 12) + 12) % 12].en, oct: Math.floor(m / 12) - 1 });
 const $ = id => document.getElementById(id);
@@ -299,7 +332,7 @@ const mismos = (a, b) => a.length === b.length && a.every(x => b.includes(x));
 
 // octava: "libre" (1-7), "centro" (3-5) o un número
 const octavasDe = o => o === "libre" ? OCTAVAS : o === "centro" ? [3, 4, 5] : [o];
-const textoOctava = o => o === "libre" ? "todas (1–7)" : o === "centro" ? "centrales (3–5)" : `solo la ${o}`;
+const textoOctava = o => o === "libre" ? "todas (2–6)" : o === "centro" ? "centrales (3–5)" : `solo la ${o}`;
 
 // ----- acordes -----
 const TIPOS = { M: { nombre: "mayor", int: [0, 4, 7], corto: "" }, m: { nombre: "menor", int: [0, 3, 7], corto: "m" } };
@@ -337,6 +370,7 @@ function guardar(clave, valor) { try { localStorage.setItem(clave, JSON.stringif
 const ajustes = Object.assign({ activas: NATURALES.slice(), octava: "libre", borrador: true, timbre: "piano", referencia: false },
   leer("oa-ajustes", {}));
 ajustes.activas = TODAS.filter(k => ajustes.activas.includes(k));
+if (typeof ajustes.octava === "number" && !OCTAVAS.includes(ajustes.octava)) ajustes.octava = "libre";   // ya no se usan la 1 ni la 7
 if (ajustes.activas.length < 2) ajustes.activas = NATURALES.slice();
 const ajustesAc = Object.assign({ activos: ["C", "F", "G"], posicion: "fundamental", octava: 4 }, leer("oa-ajustes-acordes", {}));
 ajustesAc.activos = ACORDES.map(a => a.id).filter(k => ajustesAc.activos.includes(k));
@@ -426,7 +460,7 @@ async function tocar(s) {
 const TIMBRES = {
   organo: { nombre: "Órgano", octs: OCTAVAS }, pulsada: { nombre: "Cuerda pulsada", octs: OCTAVAS },
   electrico: { nombre: "Piano eléctrico", octs: OCTAVAS }, sinte: { nombre: "Sintetizador", octs: OCTAVAS },
-  puro: { nombre: "Tono puro", octs: [3, 4, 5, 6, 7] },
+  puro: { nombre: "Tono puro", octs: [3, 4, 5, 6] },
 };
 const nombreTimbre = t => t === "piano" ? "Piano" : TIMBRES[t].nombre;
 function elegirTimbre(oct) {
@@ -571,19 +605,19 @@ const PLANES = {
   notas: {
     clave: "oa-plan-notas",
     fases: [
-      { t: "Tres notas", items: ["C", "E", "G"], oct: 4, consejo: "Empieza con pocas notas y muy distintas. Usa el Do de referencia solo cuando dudes de verdad." },
+      { t: "Tres notas", items: ["C", "E", "G"], oct: 4, consejo: "Empieza en la octava 4, la central: es donde mejor se reconocen las notas. Usa el Do de referencia solo cuando dudes de verdad." },
       { t: "Añade La", items: ["C", "E", "G", "A"], oct: 4 },
       { t: "Añade Re", items: ["C", "D", "E", "G", "A"], oct: 4 },
       { t: "Añade Fa", items: ["C", "D", "E", "F", "G", "A"], oct: 4 },
       { t: "Añade Si: las 7 naturales", items: NAT, oct: 4 },
-      { t: "Octavas centrales", items: NAT, oct: "centro", consejo: "Ahora la misma nota puede sonar en las octavas 3, 4 o 5. Fíjate en el «color» de la nota, no en lo aguda que suena." },
-      { t: "Todas las octavas", items: NAT, oct: "libre", umbral: 85, consejo: "En los extremos (octavas 1, 2 y 7) cuesta más; es normal." },
+      { t: "Bloque central (octavas 3–5)", items: NAT, oct: "centro", consejo: "Ahora la misma nota suena en las octavas 3, 4 o 5. Fíjate en qué nota es, no en lo aguda o grave que suena." },
       { t: "Añade Fa♯", items: [...NAT, "Gb"], oct: "centro", consejo: "Primera alterada. Es la que más se aleja del Do, por eso empezamos por ella." },
       { t: "Añade Si♭", items: [...NAT, "Gb", "Bb"], oct: "centro" },
       { t: "Añade Mi♭", items: [...NAT, "Eb", "Gb", "Bb"], oct: "centro" },
       { t: "Añade La♭", items: [...NAT, "Eb", "Gb", "Ab", "Bb"], oct: "centro" },
-      { t: "Añade Do♯: las 12 notas", items: TODAS, oct: "centro" },
-      { t: "Las 12 en todas las octavas", items: TODAS, oct: "libre", umbral: 85 },
+      { t: "Añade Do♯", items: TODAS, oct: "centro" },
+      { t: "Las 12 notas en el bloque central", items: TODAS, oct: "centro", consejo: "Al superarla habrás completado la prioridad alta (octavas 3 a 5)." },
+      { t: "Registros de soporte (octavas 2–6)", items: TODAS, oct: "libre", umbral: 85, consejo: "Se añaden la octava 2 (bajos) y la 6 (agudos brillantes). En los extremos cuesta más; es normal." },
       { t: "Timbres variados", items: TODAS, oct: "libre", timbre: "variado", umbral: 85, consejo: "Última fase. Después, mantenlo con unos minutos al día." },
     ],
   },
@@ -713,7 +747,7 @@ function verModo(modo) {
   document.querySelectorAll("[data-modo-btn]").forEach(b => b.classList.toggle("on", b.dataset.modoBtn === modo));
   pNota = null; pRespondida = true;
   pEstado("Pulsa «Empezar» cuando estés listo."); $("pSiguiente").textContent = "Empezar";
-  pComparar = null; ["pRepetir", "pReferencia"].forEach(id => $(id).hidden = true); $("pSiguiente").hidden = false;
+  pComparar = null; $("pFicha").hidden = true; ["pRepetir", "pReferencia"].forEach(id => $(id).hidden = true); $("pSiguiente").hidden = false;
   $("tFin").dataset.visible = "0"; $("tFin").hidden = true;
   verPestana(estado.vista);
 }
@@ -737,7 +771,7 @@ function pintarAjustes() {
     if (a.has(v)) { if (a.size > 2) a.delete(v); } else a.add(v);
     ajustes.activas = TODAS.filter(k => a.has(k)); cambiarAjustes();
   });
-  chips($("chipsOctavas"), [["libre", "Libre"], ["centro", "3–5"], ...OCTAVAS.map(o => [o, String(o)])], v => ajustes.octava === v,
+  chips($("chipsOctavas"), [["libre", "Libre (2–6)"], ["centro", "3–5"], ...OCTAVAS.map(o => [o, String(o)])], v => ajustes.octava === v,
     v => { ajustes.octava = v; cambiarAjustes(); });
   chips($("chipsTimbre"), [["piano", "Piano"], ["variado", "Variado", "Piano, órgano, cuerda pulsada, piano eléctrico, sintetizador y tono puro"]],
     v => ajustes.timbre === v, v => { ajustes.timbre = v; cambiarAjustes(); });
@@ -794,7 +828,7 @@ async function siguiente() {
   const mia = ++ficha, j = juego();
   const id = j.sel.elegir(j.activos());
   pNota = j.sonido(id, pNota);
-  pComparar = null; pRespondida = true; pintarPractica();
+  pComparar = null; pRespondida = true; pintarPractica(); $("pFicha").hidden = true;
   ["pRepetir", "pReferencia", "pSiguiente"].forEach(x => $(x).hidden = true);
   if (ajustes.borrador) { pEstado("Borrando…"); await borrar(); if (mia !== ficha) return; }
   pRespondida = false; pintarPractica();
@@ -823,6 +857,8 @@ function responder(id) {
   }
   else { j.sel.fallo(correcta, id); pEstado(`<b>✗ Era ${j.nombre(correcta)}</b>Elegiste ${j.nombre(id)}${extra}<small>Toca las dos notas marcadas para oírlas y compararlas.</small>`, "bad"); tocar(pNota); }
   pComparar = ok ? null : [correcta, id];
+  // ficha de la nota: solo al fallar (y solo en notas sueltas)
+  if (!ok && pNota.tipo === "nota") { $("pFicha").innerHTML = fichaNota(pNota.en, pNota.oct); $("pFicha").hidden = false; }
   pintarPractica({ correcta, erronea: ok ? null : id });
   $("pRepetir").hidden = true;
   $("pReferencia").hidden = !(estado.modo === "notas" && ajustes.referencia);
@@ -834,7 +870,7 @@ function pausarPractica() {
   if (!pNota) return;
   pRespondida = true; pintarPractica();
   pEstado("Pulsa «Siguiente» para seguir.");
-  pComparar = null; pintarPractica();
+  pComparar = null; pintarPractica(); $("pFicha").hidden = true;
   ["pRepetir", "pReferencia"].forEach(x => $(x).hidden = true);
   $("pSiguiente").hidden = false; $("pSiguiente").textContent = "Siguiente";
 }
@@ -937,7 +973,6 @@ $("cOirTuya").onclick = () => cCantada && tocar(cCantada);
 //  ESCUCHAR
 // =====================================================================
 const SEGMENTO = 2.6;   // segundos por octava en los archivos (2,2 s de nota + 0,4 s de pausa)
-const OCTAVAS_NOTA = { C: [1, 2, 3, 4, 5, 6, 7, 8], A: [0, 1, 2, 3, 4, 5, 6, 7], Bb: [0, 1, 2, 3, 4, 5, 6, 7], B: [0, 1, 2, 3, 4, 5, 6, 7] };
 const eTeclado = Teclado($("eTeclado"), en => escuchar(en));
 const eAcordes = BotonesAcordes($("eAcordes"), id => escucharAcorde(id));
 let escucha = null, escuchaNota = null, escuchaAcorde = null;
@@ -964,6 +999,7 @@ function escucharAcorde(id) {
   pintarEscuchar();
 }
 function pintarEscuchar() {
+  if (estado.vista === "escuchar" && !$("aTabla").children.length) pintarAnclas();
   eTeclado.pintar({ activas: TODAS, mostrarNegras: true, sonando: escuchaNota });
   eAcordes.pintar({ todos: true, sonando: escuchaAcorde });
   const caja = $("eOctavas");
@@ -971,15 +1007,138 @@ function pintarEscuchar() {
     $("eEstado").textContent = "Toca una nota para escucharla. Tócala otra vez para pararla.";
     caja.innerHTML = ""; caja.dataset.nota = ""; return;
   }
-  const lista = OCTAVAS_NOTA[escuchaNota] || OCTAVAS;
+  const lista = OCTAVAS;
   const i = Math.min(lista.length - 1, Math.floor((escucha ? escucha.currentTime : 0) / SEGMENTO));
   $("eEstado").innerHTML = `<b>${nombre(escuchaNota)} ${lista[i]}</b>Octava ${lista[i]}`;
   if (caja.dataset.nota !== escuchaNota) {
     caja.dataset.nota = escuchaNota;
-    caja.innerHTML = lista.map(o => `<span class="chip" data-o="${o}">${o}</span>`).join("");
+    caja.innerHTML = lista.map(o => `<span class="chip${o === 2 || o === 6 ? " media" : ""}" data-o="${o}">${o}</span>`).join("");
   }
   [...caja.children].forEach(c => c.classList.toggle("on", +c.dataset.o === lista[i]));
 }
+
+// =====================================================================
+//  FICHA DE LA NOTA (después de fallar) Y MIS ANCLAS
+// =====================================================================
+const REGISTRO = {
+  2: { p: "media", t: "Registro grave: territorio del bajo eléctrico, el contrabajo y la mano izquierda del piano." },
+  3: { p: "alta", t: "Registro medio-grave: la voz masculina y los acordes de acompañamiento en guitarra o piano." },
+  4: { p: "alta", t: "Octava central: aquí están el Do central (Do4) y el La de afinación (La4 = 440 Hz)." },
+  5: { p: "alta", t: "Registro medio-agudo: la voz femenina y las melodías de violín, flauta o guitarra." },
+  6: { p: "media", t: "Agudos brillantes: notas altas del piano, la flauta o los sintetizadores." },
+};
+const esc = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const anclas = Object.assign({}, leer("oa-anclas", {}));
+const guardarAnclas = () => guardar("oa-anclas", anclas);
+
+// teclado pequeño de las octavas 2 a 6, con la tecla marcada y la zona 3-5 sombreada
+function miniPiano(en, oct) {
+  const NEGRA_TRAS = { C: "Db", D: "Eb", F: "Gb", G: "Ab", A: "Bb" };
+  const x3 = OCTAVAS.indexOf(3) * 70;
+  let x = 0, blancas = "", negras = "", etiquetas = "";
+  for (const o of OCTAVAS) {
+    etiquetas += `<text x="${x + 35}" y="59" text-anchor="middle">Octava ${o}</text>`;
+    for (const w of ["C", "D", "E", "F", "G", "A", "B"]) {
+      blancas += `<rect class="${w === en && o === oct ? "on" : "w"}" x="${x + .5}" y="1" width="9" height="40" rx="1.5" />`;
+      const b = NEGRA_TRAS[w];
+      if (b) negras += `<rect class="${b === en && o === oct ? "on" : "b"}" x="${x + 6.5}" y="1" width="6" height="24" rx="1" />`;
+      x += 10;
+    }
+  }
+  const zona = `<rect class="zona" x="${x3}" y="44" width="${3 * 70}" height="5" rx="2" />`;
+  return `<svg class="minipiano" viewBox="0 0 ${x} 62" role="img" aria-label="Posición de ${nombre(en)}${oct} en el piano">${blancas}${negras}${zona}${etiquetas}</svg>`;
+}
+function fichaNota(en, oct) {
+  const r = REGISTRO[oct] || { p: "", t: "" }, a = anclas[en] || {};
+  return `<div class="ficha-nota">
+    <div class="cab"><b>${nombre(en)}${oct}</b> · ${frec(en, oct).toFixed(1)} Hz · octava ${oct}${r.p ? ` (prioridad ${r.p})` : ""}</div>
+    <p>${r.t}</p>
+    ${miniPiano(en, oct)}
+    <p class="apagado" style="font-size:.78rem;margin-top:0">Barra verde: octavas 3 a 5 (prioridad alta)</p>
+    ${a.ancla ? `<p>⚓ <b>Tu ancla:</b> ${esc(a.ancla)}</p>` : `<p class="apagado">Aún no tienes ancla para ${nombre(en)}. Puedes añadirla en Escuchar → Mis anclas.</p>`}
+    ${a.desc ? `<p>✎ <b>Tu descripción:</b> ${esc(a.desc)}</p>` : ""}
+  </div>`;
+}
+
+function pintarAnclas() {
+  $("aTabla").innerHTML = NOTAS.map(n => {
+    const a = anclas[n.en] || {};
+    const txt = [a.ancla ? `⚓ ${esc(a.ancla)}` : "", a.desc ? `✎ ${esc(a.desc)}` : ""].filter(Boolean).join("<br>");
+    return `<tr data-en="${n.en}"><td>${nombre(n.en)}</td><td>${txt || '<span class="apagado">—</span>'}</td></tr>`;
+  }).join("");
+  $("aTabla").querySelectorAll("tr").forEach(tr => tr.onclick = () => editarAncla(tr.dataset.en));
+}
+function editarAncla(en, cancion = null) {
+  const a = anclas[en] || {};
+  const ed = $("aEditor");
+  ed.hidden = false;
+  ed.innerHTML = `<div class="ficha-nota" style="margin:0 0 12px">
+    <div class="cab"><b>${nombre(en)}</b></div>
+    <p><label>Ancla (canción que empieza en esta nota)<br><input class="campo" id="aCancion" maxlength="120" value="${esc(cancion ?? a.ancla ?? "")}"></label></p>
+    <p><label>Tu descripción (color, sensación… opcional)<br><input class="campo" id="aDesc" maxlength="160" value="${esc(a.desc || "")}"></label></p>
+    <div class="acciones" style="justify-content:flex-start">
+      <button class="btn primario peque" id="aGuardar">Guardar</button>
+      <button class="btn peque" id="aOir">Oír ${nombre(en)}4</button>
+      ${a.ancla || a.desc ? '<button class="btn peque" id="aBorrar">Borrar</button>' : ""}
+      <button class="btn peque" id="aCerrar">Cancelar</button>
+    </div></div>`;
+  $("aGuardar").onclick = () => {
+    const ancla = $("aCancion").value.trim(), desc = $("aDesc").value.trim();
+    if (ancla || desc) anclas[en] = { ancla, desc }; else delete anclas[en];
+    guardarAnclas(); ed.hidden = true; pintarAnclas();
+  };
+  $("aOir").onclick = () => tocar({ tipo: "nota", en, oct: 4, timbre: "piano" });
+  if ($("aBorrar")) $("aBorrar").onclick = () => { delete anclas[en]; guardarAnclas(); ed.hidden = true; pintarAnclas(); };
+  $("aCerrar").onclick = () => { ed.hidden = true; };
+  ed.scrollIntoView({ block: "nearest" });
+}
+// cantar el comienzo de una canción para saber en qué nota empieza
+async function buscarAncla() {
+  const mia = ficha;
+  pararTodo();
+  $("aCaptura").hidden = false; $("aResultado").innerHTML = ""; $("aEditor").hidden = true;
+  try { await abrirMicro(); }
+  catch (e) {
+    $("aEstado").innerHTML = e.message === "sin-soporte" ? "El micrófono solo funciona abriendo la app desde su dirección web (https)."
+      : "No hay permiso para usar el micrófono. Actívalo en los ajustes del navegador.";
+    return;
+  }
+  if (mia !== ficha) return pararMicro();
+  $("aBuscar").disabled = true; $("aNivelCaja").hidden = false;
+  $("aEstado").innerHTML = "<b>Canta el comienzo de la canción</b><small>Tal como suena en la grabación original. Mantén la primera nota un segundo.</small>";
+  const sr = getCtx().sampleRate, tonos = [], inicio = performance.now();
+  await new Promise(fin => {
+    bucle = setInterval(() => {
+      if (!micro) { clearInterval(bucle); bucle = null; return fin(); }
+      micro.an.getFloatTimeDomainData(micro.buf);
+      const { rms, f } = detectarTono(micro.buf, sr);
+      $("aNivel").style.width = Math.min(100, rms * 600) + "%";
+      if (f) tonos.push(f);
+      if (tonos.length >= 22 || performance.now() - inicio > 8000) { clearInterval(bucle); bucle = null; fin(); }
+    }, 45);
+  });
+  $("aBuscar").disabled = false; $("aNivelCaja").hidden = true;
+  if (mia !== ficha) return;
+  pararMicro();
+  if (tonos.length < 10) { $("aEstado").innerHTML = "No te he oído bien. Prueba otra vez, un poco más fuerte."; return; }
+  mostrarAnclaDetectada(tonos);
+}
+function mostrarAnclaDetectada(tonos) {
+  const est = tonos.slice(Math.floor(tonos.length * 0.3)).sort((a, b) => a - b), f = est[Math.floor(est.length / 2)];
+  const midi = 69 + 12 * Math.log2(f / 440), red = Math.round(midi), cents = Math.round((midi - red) * 100);
+  const en = NOTAS[((red % 12) + 12) % 12].en, oct = Math.min(6, Math.max(2, Math.floor(red / 12) - 1));
+  $("aCaptura").hidden = false;
+  tocar({ tipo: "nota", en, oct, timbre: "piano" });
+  $("aEstado").innerHTML = `<b>Empieza en ${nombre(en)}</b><small>(${cents >= 0 ? "+" : "−"}${Math.abs(cents)} cents) · Compara esta nota con la grabación original: si coincide, guárdala.</small>`;
+  $("aResultado").innerHTML = `<div class="acciones" style="margin-top:0">
+      <button class="btn peque" id="aOirDet">Oír ${nombre(en)}</button>
+      <button class="btn primario peque" id="aUsar">Coincide: guardar como ancla de ${nombre(en)}</button>
+    </div>`;
+  $("aOirDet").onclick = () => tocar({ tipo: "nota", en, oct, timbre: "piano" });
+  $("aUsar").onclick = () => { $("aCaptura").hidden = true; editarAncla(en, (anclas[en] || {}).ancla || ""); setTimeout(() => $("aCancion") && $("aCancion").focus(), 50); };
+  return en;
+}
+$("aBuscar").onclick = buscarAncla;
 
 // =====================================================================
 //  PRUEBA
