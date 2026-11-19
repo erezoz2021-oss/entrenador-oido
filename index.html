@@ -76,6 +76,7 @@
   .tecla.negra small { display: block; font-weight: 400; opacity: .75; font-size: .7rem; }
   .teclado.sin-negras .negra { display: none; }
   .tecla:disabled, .acorde:disabled { opacity: .3; cursor: default; }
+  .tecla.apagada { opacity: .3; }
   .correcta { background: var(--ok-bg) !important; border-color: var(--ok) !important; color: var(--ok) !important; opacity: 1 !important; }
   .erronea { background: var(--bad-bg) !important; border-color: var(--bad) !important; color: var(--bad) !important; opacity: 1 !important; }
   .sonando { background: var(--accent) !important; border-color: var(--accent) !important; color: var(--accent-text) !important; opacity: 1 !important; }
@@ -607,10 +608,12 @@ function Teclado(cont, alPulsar) {
     cont.appendChild(b); teclas[n.en] = b;
   });
   return {
-    pintar({ activas = [], habilitado = true, habilitadas = [], correcta = null, erronea = null, sonando = null, mostrarNegras = null } = {}) {
-      cont.classList.toggle("sin-negras", !(mostrarNegras ?? activas.some(k => POR_EN[k].alt)));
+    pintar({ activas = [], habilitado = true, habilitadas = [], correcta = null, erronea = null, sonando = null, mostrarNegras = null, libres = false } = {}) {
+      // libres: tras un fallo todas las teclas suenan; las que no están en juego se ven apagadas
+      cont.classList.toggle("sin-negras", !(libres || (mostrarNegras ?? activas.some(k => POR_EN[k].alt))));
       for (const [en, b] of Object.entries(teclas)) {
-        b.disabled = !activas.includes(en) || !(habilitado || habilitadas.includes(en));
+        b.disabled = !libres && (!activas.includes(en) || !(habilitado || habilitadas.includes(en)));
+        b.classList.toggle("apagada", libres && !habilitadas.includes(en));
         b.classList.toggle("correcta", en === correcta); b.classList.toggle("erronea", en === erronea); b.classList.toggle("sonando", en === sonando);
       }
     },
@@ -964,16 +967,18 @@ $("todas").onclick = () => { ajustes.activas = TODAS.slice(); cambiarAjustes(); 
 const pResp = { notas: Teclado($("pTeclado"), id => pulsar(id)), acordes: BotonesAcordes($("pAcordes"), id => pulsar(id)),
   intervalos: BotonesLista($("pIntervalos"), INTERVALOS, id => pulsar(id)) };
 // tras un fallo, la tecla correcta y la elegida se pueden pulsar para oírlas y compararlas
+// (en notas sueltas, además, cualquier otra tecla)
 let pComparar = null;
 function pulsar(id) {
   if (!pRespondida) return responder(id);
-  if (pComparar && pComparar.includes(id)) tocar(juego().con(pNota, id));
+  // en notas sueltas, tras fallar, cualquier tecla suena (en la octava de la nota que sonó)
+  if (pComparar && (pComparar.includes(id) || estado.modo === "notas")) tocar(juego().con(pNota, id));
 }
 let pNota = null, pRespondida = true, pElegida = null;
 function pEstado(html, clase = "") { const e = $("pEstado"); e.innerHTML = html; e.className = "estado " + clase; }
 function pintarPractica(marcas = {}) {
   const habilitadas = pComparar || [];
-  pResp.notas.pintar({ activas: ajustes.activas, habilitado: !pRespondida, habilitadas, ...(estado.modo === "notas" ? marcas : {}) });
+  pResp.notas.pintar({ activas: ajustes.activas, habilitado: !pRespondida, habilitadas, libres: estado.modo === "notas" && !!pComparar, ...(estado.modo === "notas" ? marcas : {}) });
   pResp.acordes.pintar({ activas: ajustesAc.activos, habilitado: !pRespondida, habilitadas, ...(estado.modo === "acordes" ? marcas : {}) });
   pResp.intervalos.pintar({ activas: ajustesIn.activos, habilitado: !pRespondida, habilitadas, ...(estado.modo === "intervalos" ? marcas : {}) });
 }
@@ -1018,7 +1023,7 @@ function responder(id) {
       <small>Toca los dos acordes marcados para oírlos y compararlos.</small>`, "bad");
     tocar(pNota);
   }
-  else { j.sel.fallo(correcta, id); pEstado(`<b>✗ Era ${j.nombre(correcta)}</b>Elegiste ${j.nombre(id)}${extra}<small>Toca las dos notas marcadas para oírlas y compararlas.</small>`, "bad"); tocar(pNota); }
+  else { j.sel.fallo(correcta, id); pEstado(`<b>✗ Era ${j.nombre(correcta)}</b>Elegiste ${j.nombre(id)}${extra}<small>Toca las dos notas marcadas para oírlas y compararlas${pNota.tipo === "nota" ? ", o cualquier otra tecla (suena en la misma octava)" : ""}.</small>`, "bad"); tocar(pNota); }
   pComparar = ok ? null : [correcta, id];
   // ficha de la nota: solo al fallar (y solo en notas sueltas)
   if (!ok && pNota.tipo === "nota") {
