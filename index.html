@@ -236,7 +236,7 @@
       <label class="switch">
         <input type="checkbox" id="borrador" checked>
         <span>Borrar el sonido anterior
-          <small>Un ruido breve antes de cada pregunta para que no puedas compararla con la anterior.</small>
+          <small>Un sonido breve antes de cada pregunta para que no puedas compararla con la anterior. Al practicar el plan (notas y acordes) son notas al azar, que borran mucho mejor la memoria de la anterior.</small>
         </span>
       </label>
     </div>
@@ -601,6 +601,22 @@ function borrar() {
   n.buffer = b; n.connect(salida); n.start(t0);
   return espera((dur + 0.7) * 1000);
 }
+// Borrador con notas: 8 notas de piano rápidas y al azar (octavas 2 a 6), sin la clase de la nota
+// (o las del acorde) que va a sonar. Unas notas intermedias borran la memoria de la anterior mucho
+// mejor que un ruido (Deutsch, 1970), así no se puede comparar con ella. Se usa al practicar el plan.
+const BORRADOR_N = 8, BORRADOR_PASO = 0.17;
+async function borrarConNotas(excluir = []) {
+  const ev = []; let prev = -1;
+  for (let i = 0; i < BORRADOR_N; i++) {
+    let m;
+    do { m = 41 + Math.floor(Math.random() * 48); } while (excluir.includes(m % 12) || Math.abs(m - prev) < 3);
+    prev = m; ev.push({ midi: m, t: i * BORRADOR_PASO, dur: 0.28 });
+  }
+  pararTodo();
+  await tocarEventos(ev, ++fichaSonido);
+  return espera((BORRADOR_N * BORRADOR_PASO + 0.45 + 0.6) * 1000);
+}
+const clasesDe = s => s.tipo === "nota" ? [POR_EN[s.en].pc] : s.tipo === "acorde" ? notasAcorde(s).map(n => POR_EN[n.en].pc) : [];
 
 // =====================================================================
 //  COMPONENTES DE RESPUESTA
@@ -1076,7 +1092,13 @@ async function siguiente() {
   pNota = j.sonido(id, pNota); pConReferencia = false;
   pComparar = null; pRespondida = true; pintarPractica(); $("pFicha").hidden = true;
   ["pRepetir", "pReferencia", "pSiguiente"].forEach(x => $(x).hidden = true);
-  if (ajustes.borrador) { pEstado("Borrando…"); await borrar(); if (mia !== ficha) return; }
+  if (ajustes.borrador) {
+    // en el plan (notas y acordes) el borrador son notas al azar; en práctica libre e intervalos, el ruido
+    const conNotas = !esLibre() && estado.modo !== "intervalos";
+    pEstado("Borrando…");
+    await (conNotas ? borrarConNotas(clasesDe(pNota)) : borrar());
+    if (mia !== ficha) return;
+  }
   pRespondida = false; pintarPractica();
   $("pRepetir").hidden = false;
   const conRef = estado.modo === "notas" && ajustes.referencia;
