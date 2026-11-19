@@ -92,7 +92,8 @@
   .prog-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
   .prog-item { font-size: .8rem; padding: 2px 8px; border-radius: 10px; border: 1px solid var(--line); }
   .prog-item.ok { background: var(--ok-bg); border-color: var(--ok); color: var(--ok); }
-  .prog-item.camino { background: var(--accent-soft); border-color: var(--accent); color: var(--text); }
+  .prog-item.camino, .prog-item.revalidar { background: var(--accent-soft); border-color: var(--accent); color: var(--text); }
+  .prog-item.revalidar { border-style: dashed; }
   .prog-item.nueva { opacity: .65; }
   .rotulo-plan { display: flex; align-items: center; justify-content: space-between; gap: 10px 14px; flex-wrap: wrap;
     border-radius: 14px; padding: 12px 14px; margin: 0 0 14px; border: 1px solid var(--line); }
@@ -832,6 +833,7 @@ function estadoPlan(modo) {
     if (modo === "notas" && e.fase >= 11) e.fase--;
     e.v = 2; e.max = Math.max(e.max ?? 0, e.fase); guardar(plan(modo).clave, e);
   }
+  if (!e.desde) { e.desde = Date.now(); guardar(plan(modo).clave, e); }   // inicio de la fase (para revalidar)
   return e;
 }
 const faseActual = modo => plan(modo).fases[Math.min(estadoPlan(modo).fase, plan(modo).fases.length - 1)];
@@ -843,15 +845,18 @@ const faseActual = modo => plan(modo).fases[Math.min(estadoPlan(modo).fase, plan
 // Consolidada: acertada en un día posterior al primero, en al menos 2 días distintos y, en sus 8 últimas
 // apariciones, como mucho 1 fallo (el primer fallo de cada día no cuenta). El tiempo no cuenta.
 // Las respuestas con el Do de referencia no cuentan, y Cantar queda fuera del plan.
-const AVANCE = 0.85, VENTANA = 8;
+// Revalidación: lo que ya venía de fases anteriores (con menos opciones) solo cuenta en la fase actual
+// cuando se ha acertado al menos REVALIDAR veces en ella, una de ellas en un día posterior al inicio de la fase.
+const AVANCE = 0.85, VENTANA = 8, REVALIDAR = 3;
 const dia = (t = Date.now()) => Math.floor((t - new Date(t).getTimezoneOffset() * 60000) / 86400000);
 const claveProg = modo => "oa-progreso-" + modo;
 const contexto = (modo, f) => modo === "notas" ? `o${f.oct}|${f.timbre || "piano"}` : modo === "acordes" ? `${f.pos}|o${f.oct}` : f.dir;
 function tarjetas(modo) { return leer(claveProg(modo), {}); }
-function registrarRespuesta(modo, f, id, ok) {
+// cada respuesta: [día, acierto, fase]; f0 = fase en la que salió por primera vez
+function registrarRespuesta(modo, f, id, ok, fase) {
   const todas = tarjetas(modo), k = contexto(modo, f) + ":" + id, d = dia();
-  const t = todas[k] || { primero: d, r: [] };
-  t.r.push([d, ok ? 1 : 0]);
+  const t = todas[k] || { primero: d, r: [], f0: fase };
+  t.r.push([d, ok ? 1 : 0, fase]);
   if (t.r.length > 20) t.r = t.r.slice(-20);
   todas[k] = t; guardar(claveProg(modo), todas);
 }
@@ -870,20 +875,32 @@ function estadoTarjeta(t) {
   });
   return posterior && diasOk.size >= 2 && fallos <= 1 ? "ok" : "camino";
 }
-// qué le falta a una tarjeta para consolidarse: se simula acertarla hoy 1, 2, 3… veces
-function faltaTarjeta(t) {
-  const e = estadoTarjeta(t), hoy = dia();
+// estado dentro de la fase i (que empezó el día ini): como estadoTarjeta, más "revalidar" para lo que
+// venía consolidado de antes y aún no se ha comprobado con las opciones de esta fase
+function estadoEnFase(t, i, ini) {
+  const e = estadoTarjeta(t);
+  if (e !== "ok" || t.f0 === i) return e;   // nueva en esta fase: basta con consolidarla
+  const bien = t.r.filter(([, ok, f]) => ok && f === i);
+  return bien.length >= REVALIDAR && bien.some(([d]) => d > ini) ? "ok" : "revalidar";
+}
+// qué le falta para contar en esta fase: se simula acertarla hoy 1, 2, 3… veces
+function faltaTarjeta(t, i, ini) {
+  const e = estadoEnFase(t, i, ini), hoy = dia();
   if (e === "ok") return { e, txt: "consolidada", hoy: true };
   if (e === "nueva") return { e, txt: "aún no ha salido; acertar hoy y otro día", hoy: false };
   for (let k = 1; k <= VENTANA; k++)
-    if (estadoTarjeta({ ...t, r: [...t.r, ...Array(k).fill([hoy, 1])] }) === "ok")
-      return { e, txt: k === 1 ? "un acierto más hoy" : `${k} aciertos seguidos más`, hoy: true };
-  const okAntes = t.r.some(([d, ok]) => ok && d < hoy);
-  return { e, txt: okAntes || t.r.some(([d, ok]) => ok) ? "acertar también otro día (mañana o después)" : "acertar hoy y también otro día", hoy: false };
+    if (estadoEnFase({ ...t, r: [...t.r, ...Array(k).fill([hoy, 1, i])] }, i, ini) === "ok")
+      return { e, txt: e === "revalidar" ? `${k === 1 ? "un acierto" : k + " aciertos"} más en esta fase` : k === 1 ? "un acierto más hoy" : `${k} aciertos seguidos más`, hoy: true };
+  if (e === "revalidar") {
+    const bien = t.r.filter(([, ok, f]) => ok && f === i).length, faltan = Math.max(0, REVALIDAR - bien);
+    return { e, txt: (faltan ? `${faltan} acierto${faltan > 1 ? "s" : ""} en esta fase, uno de ellos` : "un acierto") + " otro día (mañana o después)", hoy: false };
+  }
+  const algunOk = t.r.some(([, ok]) => ok);
+  return { e, txt: algunOk ? "acertar también otro día (mañana o después)" : "acertar hoy y también otro día", hoy: false };
 }
 function progresoFase(modo, i) {
-  const f = plan(modo).fases[i], todas = tarjetas(modo), ctx = contexto(modo, f);
-  const items = f.items.map(id => { const fl = faltaTarjeta(todas[ctx + ":" + id]); return { id, e: fl.e, falta: fl.txt, hoy: fl.hoy }; });
+  const f = plan(modo).fases[i], todas = tarjetas(modo), ctx = contexto(modo, f), ini = dia(estadoPlan(modo).desde);
+  const items = f.items.map(id => { const fl = faltaTarjeta(todas[ctx + ":" + id], i, ini); return { id, e: fl.e, falta: fl.txt, hoy: fl.hoy }; });
   const hechos = items.filter(x => x.e === "ok").length, necesarios = Math.ceil(AVANCE * items.length - 1e-9);
   const faltan = necesarios - hechos;
   // ¿se puede superar hoy? solo si basta con tarjetas que pueden consolidarse hoy
@@ -932,8 +949,8 @@ const NOMBRE_MODO = { notas: "Notas sueltas", acordes: "Acordes", intervalos: "I
 function pintarPlan() {
   const modo = estado.modo, p = plan(modo), ep = estadoPlan(modo), i = Math.min(ep.fase, p.fases.length - 1), f = p.fases[i];
   const pr = progresoFase(modo, i), ultima = i === p.fases.length - 1;
-  const MARCA = { ok: ["✓", "consolidada"], camino: ["◐", "en camino"], nueva: ["○", "sin practicar"] };
-  const estados = pr.items.map(x => `<li class="prog-fila ${x.e}"><span class="prog-item ${x.e}">${MARCA[x.e][0]} ${JUEGOS[modo].nombre(x.id)}</span><span>${x.e === "ok" ? "consolidad" + (modo === "notas" ? "a" : "o") : "Falta: " + x.falta}</span></li>`).join("");
+  const MARCA = { ok: ["✓", "consolidada"], camino: ["◐", "en camino"], revalidar: ["↻", "revalidar"], nueva: ["○", "sin practicar"] };
+  const estados = pr.items.map(x => `<li class="prog-fila ${x.e}"><span class="prog-item ${x.e}">${MARCA[x.e][0]} ${JUEGOS[modo].nombre(x.id)}</span><span>${x.e === "ok" ? "consolidad" + (modo === "notas" ? "a" : "o") : (x.e === "revalidar" ? "Revalidar con más opciones: " : "Falta: ") + x.falta}</span></li>`).join("");
   const pp = progresoPlan(modo);
   const aplicados = ajustesDeFase(modo, f);
   $("planActual").innerHTML = `
@@ -955,7 +972,7 @@ function pintarPlan() {
       <div class="barra fina"><span style="width:${pp.pct}%"></span></div>
     </div>
     ${pr.superada && ultima ? `<div class="aviso ok">✓ ¡Has completado el plan! Sigue practicando unos minutos al día para mantenerlo.</div>`
-      : `<div class="aviso info">Se consolida al acertarla en días distintos (al menos uno posterior al primero) y sin fallos repetidos en sus últimas ${VENTANA} apariciones. Al llegar al 85 % pasas solo a la fase siguiente. No cuentan las respuestas con el Do de referencia ni lo que practicas en Cantar.</div>`}
+      : `<div class="aviso info">Se consolida al acertarla en días distintos (al menos uno posterior al primero) y sin fallos repetidos en sus últimas ${VENTANA} apariciones. Lo que ya traías consolidado de fases anteriores (↻) hay que revalidarlo aquí, con más opciones: ${REVALIDAR} aciertos en esta fase, uno de ellos otro día. Al llegar al 85 % pasas solo a la fase siguiente. No cuentan las respuestas con el Do de referencia ni lo que practicas en Cantar.</div>`}
     <div class="acciones">
       <button class="btn primario" id="planPracticar">Practicar esta fase</button>
     </div>
@@ -1008,7 +1025,7 @@ function pintarAvisoPlan() {
         <small>${resumenFase(estado.modo, f)}</small>
         <small><b>${pr.hechos} de ${pr.necesarios}</b> consolidad${estado.modo === "notas" ? "as" : "os"} para avanzar${pr.superada ? "" : pr.hoyPosible ? " · puedes lograrlo hoy" : " · como pronto, mañana"} · plan al ${progresoPlan(estado.modo).pct} %</small>
         <div class="barra mini"><span style="width:${Math.min(100, Math.round(100 * pr.hechos / pr.necesarios))}%"></span></div>
-        <small class="prog-chips">${pr.items.map(x => `<span class="prog-item ${x.e}" title="${x.e === "ok" ? "consolidada" : "Falta: " + x.falta}">${{ ok: "✓", camino: "◐", nueva: "○" }[x.e]} ${JUEGOS[estado.modo].nombre(x.id)}</span>`).join("")}</small></div>
+        <small class="prog-chips">${pr.items.map(x => `<span class="prog-item ${x.e}" title="${x.e === "ok" ? "consolidada" : "Falta: " + x.falta}">${{ ok: "✓", camino: "◐", revalidar: "↻", nueva: "○" }[x.e]} ${JUEGOS[estado.modo].nombre(x.id)}</span>`).join("")}</small></div>
       <button class="chip mini" id="irLibre">Práctica libre (cambiar ajustes)</button>`;
     $("irLibre").onclick = () => ponerLibre(true);
     return;
@@ -1171,7 +1188,7 @@ function responder(id) {
   let avance = null;
   const fPlan = faseActual(estado.modo);
   if (!esLibre() && ajustesDeFase(estado.modo, fPlan) && !pConReferencia) {
-    registrarRespuesta(estado.modo, fPlan, correcta, ok);
+    registrarRespuesta(estado.modo, fPlan, correcta, ok, Math.min(estadoPlan(estado.modo).fase, plan(estado.modo).fases.length - 1));
     avance = comprobarAvance(estado.modo);
   }
   const extra = (det ? `<small>${det}</small>` : "") + (avance ? `<small class="avance">${avance}</small>` : "");
