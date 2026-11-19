@@ -82,6 +82,14 @@
   .progreso-fase .barra span { display: block; height: 100%; background: var(--accent); }
   .progreso-fase p { margin: 6px 0; font-size: .9rem; }
   .prog-items { display: flex; flex-wrap: wrap; gap: 6px; }
+  .prog-lista { list-style: none; padding: 0; margin: 8px 0 0; display: flex; flex-direction: column; gap: 6px; }
+  .prog-fila { display: flex; align-items: baseline; gap: 8px; font-size: .86rem; color: var(--muted); }
+  .prog-fila .prog-item { flex: none; color: var(--text); }
+  .barra { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
+  .barra span { display: block; height: 100%; background: var(--accent); }
+  .barra.fina { height: 5px; }
+  .barra.mini { height: 5px; margin: 4px 0 2px; max-width: 260px; }
+  .prog-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
   .prog-item { font-size: .8rem; padding: 2px 8px; border-radius: 10px; border: 1px solid var(--line); }
   .prog-item.ok { background: var(--ok-bg); border-color: var(--ok); color: var(--ok); }
   .prog-item.camino { background: var(--accent-soft); border-color: var(--accent); color: var(--text); }
@@ -446,26 +454,42 @@ function ponerLibre(v) {
 // =====================================================================
 //  SELECCIÓN CON REPASO ESPACIADO
 // =====================================================================
-const ESPERA_MIN = 4, ESPERA_MAX = 7, PESO_MAX = 4;
+const PESO_MAX = 4;
+// Espera tras un fallo antes de que vuelva a salir: proporcional a cuántos hay en juego.
+// Con pocos (3 o 4) solo se aparta 1–2 rondas; si no, los demás se quedaban solos en bucle.
+const esperaPara = n => n <= 3 ? [1, 2] : n <= 5 ? [2, 3] : n <= 8 ? [3, 5] : [4, 7];
 class Selector {
-  constructor(clave) { this.clave = clave; this.pesos = leer(clave, {}); this.bloqueo = {}; this.ronda = 0; this.ultima = null; }
+  constructor(clave) { this.clave = clave; this.pesos = leer(clave, {}); this.bloqueo = {}; this.ronda = 0; this.ultimas = []; this.visto = {}; this.n = 12; }
   peso(k) { return Math.min(PESO_MAX, this.pesos[k] ?? 1); }
   elegir(activas) {
-    const posibles = this.ultima && activas.length >= 4 ? activas.filter(k => k !== this.ultima) : activas.slice();
-    let cand = posibles.filter(k => !(this.bloqueo[k] > this.ronda));
-    const enEspera = posibles.filter(k => this.bloqueo[k] > this.ronda).sort((a, b) => this.bloqueo[a] - this.bloqueo[b]);
-    while (cand.length < 2 && enEspera.length) cand.push(enEspera.shift());
-    const total = cand.reduce((s, k) => s + this.peso(k), 0);
-    let r = Math.random() * total;
-    const id = cand.find(k => (r -= this.peso(k)) < 0) || cand[cand.length - 1];
-    this.ronda++; this.ultima = id;
+    this.n = activas.length;
+    activas.forEach(k => { if (this.visto[k] === undefined) this.visto[k] = this.ronda; });
+    // nunca la misma tres veces seguidas (con 4 o más, ni dos seguidas)
+    const [u1, u2] = this.ultimas;
+    let posibles = activas.filter(k => !(k === u1 && (activas.length >= 4 || k === u2)));
+    if (!posibles.length) posibles = activas.slice();
+    // ninguna se queda mucho tiempo sin salir
+    const limite = 2 * activas.length + 1;
+    const olvidadas = posibles.filter(k => this.ronda - this.visto[k] >= limite).sort((a, b) => this.visto[a] - this.visto[b]);
+    let id;
+    if (olvidadas.length) id = olvidadas[0];
+    else {
+      let cand = posibles.filter(k => !(this.bloqueo[k] > this.ronda));
+      const enEspera = posibles.filter(k => this.bloqueo[k] > this.ronda).sort((a, b) => this.bloqueo[a] - this.bloqueo[b]);
+      while (cand.length < 2 && enEspera.length) cand.push(enEspera.shift());
+      const total = cand.reduce((s, k) => s + this.peso(k), 0);
+      let r = Math.random() * total;
+      id = cand.find(k => (r -= this.peso(k)) < 0) || cand[cand.length - 1];
+    }
+    this.ronda++; this.visto[id] = this.ronda; this.ultimas = [id, ...this.ultimas].slice(0, 2);
     return id;
   }
-  esperar(k) { this.bloqueo[k] = this.ronda + ESPERA_MIN + Math.floor(Math.random() * (ESPERA_MAX - ESPERA_MIN + 1)); }
+  esperar(k) { const [a, b] = esperaPara(this.n); this.bloqueo[k] = this.ronda + a + Math.floor(Math.random() * (b - a + 1)); }
   acierto(k) { this.pesos[k] = 1 + (this.peso(k) - 1) * 0.6; guardar(this.clave, this.pesos); }
   fallo(correcta, elegida) {
     this.pesos[correcta] = Math.min(PESO_MAX, this.peso(correcta) + 1); this.esperar(correcta);
-    if (elegida && elegida !== correcta) { this.pesos[elegida] = Math.min(PESO_MAX, this.peso(elegida) + 0.5); this.esperar(elegida); }
+    // con pocas en juego no se aparta también la elegida (se quedaría una sola)
+    if (elegida && elegida !== correcta) { this.pesos[elegida] = Math.min(PESO_MAX, this.peso(elegida) + 0.5); if (this.n >= 5) this.esperar(elegida); }
     guardar(this.clave, this.pesos);
   }
 }
@@ -846,11 +870,30 @@ function estadoTarjeta(t) {
   });
   return posterior && diasOk.size >= 2 && fallos <= 1 ? "ok" : "camino";
 }
+// qué le falta a una tarjeta para consolidarse: se simula acertarla hoy 1, 2, 3… veces
+function faltaTarjeta(t) {
+  const e = estadoTarjeta(t), hoy = dia();
+  if (e === "ok") return { e, txt: "consolidada", hoy: true };
+  if (e === "nueva") return { e, txt: "aún no ha salido; acertar hoy y otro día", hoy: false };
+  for (let k = 1; k <= VENTANA; k++)
+    if (estadoTarjeta({ ...t, r: [...t.r, ...Array(k).fill([hoy, 1])] }) === "ok")
+      return { e, txt: k === 1 ? "un acierto más hoy" : `${k} aciertos seguidos más`, hoy: true };
+  const okAntes = t.r.some(([d, ok]) => ok && d < hoy);
+  return { e, txt: okAntes || t.r.some(([d, ok]) => ok) ? "acertar también otro día (mañana o después)" : "acertar hoy y también otro día", hoy: false };
+}
 function progresoFase(modo, i) {
   const f = plan(modo).fases[i], todas = tarjetas(modo), ctx = contexto(modo, f);
-  const items = f.items.map(id => ({ id, e: estadoTarjeta(todas[ctx + ":" + id]) }));
+  const items = f.items.map(id => { const fl = faltaTarjeta(todas[ctx + ":" + id]); return { id, e: fl.e, falta: fl.txt, hoy: fl.hoy }; });
   const hechos = items.filter(x => x.e === "ok").length, necesarios = Math.ceil(AVANCE * items.length - 1e-9);
-  return { items, hechos, total: items.length, necesarios, superada: hechos >= necesarios };
+  const faltan = necesarios - hechos;
+  // ¿se puede superar hoy? solo si basta con tarjetas que pueden consolidarse hoy
+  const posiblesHoy = items.filter(x => x.e !== "ok" && x.hoy).length;
+  return { items, hechos, total: items.length, necesarios, superada: faltan <= 0, faltan: Math.max(0, faltan), hoyPosible: posiblesHoy >= faltan };
+}
+// avance de todo el plan: fases completas + parte de la actual
+function progresoPlan(modo) {
+  const p = plan(modo), i = Math.min(estadoPlan(modo).fase, p.fases.length - 1), pr = progresoFase(modo, i);
+  return { i, n: p.fases.length, pct: Math.round(100 * (i + Math.min(1, pr.hechos / pr.necesarios)) / p.fases.length), pr };
 }
 // tras cada respuesta del plan: si la fase queda superada, se pasa a la siguiente
 function comprobarAvance(modo) {
@@ -890,7 +933,8 @@ function pintarPlan() {
   const modo = estado.modo, p = plan(modo), ep = estadoPlan(modo), i = Math.min(ep.fase, p.fases.length - 1), f = p.fases[i];
   const pr = progresoFase(modo, i), ultima = i === p.fases.length - 1;
   const MARCA = { ok: ["✓", "consolidada"], camino: ["◐", "en camino"], nueva: ["○", "sin practicar"] };
-  const estados = pr.items.map(x => `<span class="prog-item ${x.e}" title="${MARCA[x.e][1]}">${MARCA[x.e][0]} ${JUEGOS[modo].nombre(x.id)}</span>`).join("");
+  const estados = pr.items.map(x => `<li class="prog-fila ${x.e}"><span class="prog-item ${x.e}">${MARCA[x.e][0]} ${JUEGOS[modo].nombre(x.id)}</span><span>${x.e === "ok" ? "consolidad" + (modo === "notas" ? "a" : "o") : "Falta: " + x.falta}</span></li>`).join("");
+  const pp = progresoPlan(modo);
   const aplicados = ajustesDeFase(modo, f);
   $("planActual").innerHTML = `
     <p class="fase-num">${NOMBRE_MODO[modo]} · Fase ${i + 1} de ${p.fases.length}</p>
@@ -905,7 +949,10 @@ function pintarPlan() {
     <div class="progreso-fase">
       <div class="barra"><span style="width:${Math.round(100 * pr.hechos / pr.necesarios) > 100 ? 100 : Math.round(100 * pr.hechos / pr.necesarios)}%"></span></div>
       <p><b>${pr.hechos} de ${pr.total}</b> consolidad${modo === "notas" ? "as" : "os"}</p>
-      <div class="prog-items">${estados}</div>
+      <p class="apagado" style="font-size:.85rem">${pr.superada ? "" : `Te falta${pr.faltan > 1 ? "n" : ""} <b>${pr.faltan}</b> para pasar de fase${pr.hoyPosible ? "; puedes lograrlo hoy." : "; como pronto, mañana (hay que acertar en días distintos)."}`}</p>
+      <ul class="prog-lista">${estados}</ul>
+      <p style="margin-top:12px"><b>Todo el plan:</b> fase ${pp.i + 1} de ${pp.n} · ${pp.pct} % completado</p>
+      <div class="barra fina"><span style="width:${pp.pct}%"></span></div>
     </div>
     ${pr.superada && ultima ? `<div class="aviso ok">✓ ¡Has completado el plan! Sigue practicando unos minutos al día para mantenerlo.</div>`
       : `<div class="aviso info">Se consolida al acertarla en días distintos (al menos uno posterior al primero) y sin fallos repetidos en sus últimas ${VENTANA} apariciones. Al llegar al 85 % pasas solo a la fase siguiente. No cuentan las respuestas con el Do de referencia ni lo que practicas en Cantar.</div>`}
@@ -959,7 +1006,9 @@ function pintarAvisoPlan() {
     $("avisoPlan").innerHTML = `<div><span class="etq">Practicando el plan</span>
         <b>Fase ${i + 1} de ${p.fases.length}: ${f.t}</b>
         <small>${resumenFase(estado.modo, f)}</small>
-        <small><b>${pr.hechos} de ${pr.necesarios}</b> consolidad${estado.modo === "notas" ? "as" : "os"} para avanzar</small></div>
+        <small><b>${pr.hechos} de ${pr.necesarios}</b> consolidad${estado.modo === "notas" ? "as" : "os"} para avanzar${pr.superada ? "" : pr.hoyPosible ? " · puedes lograrlo hoy" : " · como pronto, mañana"} · plan al ${progresoPlan(estado.modo).pct} %</small>
+        <div class="barra mini"><span style="width:${Math.min(100, Math.round(100 * pr.hechos / pr.necesarios))}%"></span></div>
+        <small class="prog-chips">${pr.items.map(x => `<span class="prog-item ${x.e}" title="${x.e === "ok" ? "consolidada" : "Falta: " + x.falta}">${{ ok: "✓", camino: "◐", nueva: "○" }[x.e]} ${JUEGOS[estado.modo].nombre(x.id)}</span>`).join("")}</small></div>
       <button class="chip mini" id="irLibre">Práctica libre (cambiar ajustes)</button>`;
     $("irLibre").onclick = () => ponerLibre(true);
     return;
