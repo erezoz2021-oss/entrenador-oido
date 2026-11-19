@@ -77,6 +77,16 @@
   .teclado.sin-negras .negra { display: none; }
   .tecla:disabled, .acorde:disabled { opacity: .3; cursor: default; }
   .tecla.apagada { opacity: .3; }
+  .progreso-fase { margin: 12px 0 4px; }
+  .progreso-fase .barra { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
+  .progreso-fase .barra span { display: block; height: 100%; background: var(--accent); }
+  .progreso-fase p { margin: 6px 0; font-size: .9rem; }
+  .prog-items { display: flex; flex-wrap: wrap; gap: 6px; }
+  .prog-item { font-size: .8rem; padding: 2px 8px; border-radius: 10px; border: 1px solid var(--line); }
+  .prog-item.ok { background: var(--ok-bg); border-color: var(--ok); color: var(--ok); }
+  .prog-item.camino { background: var(--accent-soft); border-color: var(--accent); color: var(--text); }
+  .prog-item.nueva { opacity: .65; }
+  .estado small.avance { font-weight: 600; color: var(--accent); }
   .correcta { background: var(--ok-bg) !important; border-color: var(--ok) !important; color: var(--ok) !important; opacity: 1 !important; }
   .erronea { background: var(--bad-bg) !important; border-color: var(--bad) !important; color: var(--bad) !important; opacity: 1 !important; }
   .sonando { background: var(--accent) !important; border-color: var(--accent) !important; color: var(--accent-text) !important; opacity: 1 !important; }
@@ -148,7 +158,6 @@
     <button class="pestana" data-tab="practicar">Practicar</button>
     <button class="pestana" data-tab="cantar" data-modo="notas intervalos">Cantar</button>
     <button class="pestana" data-tab="escuchar">Escuchar</button>
-    <button class="pestana" data-tab="prueba">Prueba</button>
   </nav>
 
   <p class="sub" data-solo="practicar" data-modo="notas">Escucha la nota y elige cuál es. Las que falles volverán más adelante.</p>
@@ -159,10 +168,9 @@
   <p class="sub" data-solo="escuchar" data-modo="notas">Escucha cada nota en todas las octavas del piano, de grave a agudo.</p>
   <p class="sub" data-solo="escuchar" data-modo="acordes">Toca un acorde para escucharlo.</p>
   <p class="sub" data-solo="escuchar" data-modo="intervalos">Toca un intervalo para escucharlo desde Do4.</p>
-  <p class="sub" data-solo="prueba">Sin ayudas ni correcciones: mide tu nivel y decide si pasas de fase.</p>
 
   <!-- ================= AJUSTES ================= -->
-  <section class="card" id="ajustes" aria-label="Ajustes" data-solo="practicar cantar prueba">
+  <section class="card" id="ajustes" aria-label="Ajustes" data-solo="practicar cantar">
     <!-- notas -->
     <div class="bloque" data-modo="notas">
       <p class="label">Notas en juego</p>
@@ -172,7 +180,7 @@
         <button class="chip mini" id="todas">Las 12</button>
       </div>
     </div>
-    <div class="bloque" data-modo="notas" data-solo="practicar prueba">
+    <div class="bloque" data-modo="notas" data-solo="practicar">
       <p class="label">Octava</p>
       <div class="row" id="chipsOctavas"></div>
       <p class="ayuda" style="text-align:left;margin-top:6px">Prioridad alta: 3, 4 y 5 · media: 2 y 6</p>
@@ -194,11 +202,11 @@
       <p class="label">Acordes en juego</p>
       <div id="chipsAcordes"></div>
     </div>
-    <div class="bloque" data-modo="acordes" data-solo="practicar prueba">
+    <div class="bloque" data-modo="acordes" data-solo="practicar">
       <p class="label">Posición</p>
       <div class="row" id="chipsPosicion"></div>
     </div>
-    <div class="bloque" data-modo="acordes" data-solo="practicar prueba">
+    <div class="bloque" data-modo="acordes" data-solo="practicar">
       <p class="label">Octava</p>
       <div class="row" id="chipsOctavaAc"></div>
     </div>
@@ -220,7 +228,7 @@
         </span>
       </label>
     </div>
-    <div class="aviso info" id="avisoPlan" data-solo="practicar prueba" hidden></div>
+    <div class="aviso info" id="avisoPlan" data-solo="practicar" hidden></div>
   </section>
 
   <!-- ================= PLAN ================= -->
@@ -312,25 +320,6 @@
   </section>
 
   <!-- ================= PRUEBA ================= -->
-  <section class="card stage" data-vista="prueba" aria-live="polite" hidden>
-    <div id="tIntro">
-      <div class="estado" id="tIntroTexto"></div>
-      <div class="acciones"><button class="btn primario" id="tEmpezar">Empezar prueba</button></div>
-    </div>
-    <div id="tCurso" hidden>
-      <div class="progreso" id="tProgreso"></div>
-      <div class="estado" id="tEstado"></div>
-      <div id="tTeclado" data-modo="notas"></div>
-      <div id="tAcordes" data-modo="acordes"></div>
-      <div id="tIntervalos" data-modo="intervalos"></div>
-      <div class="acciones">
-        <button class="btn" id="tRepetir">Repetir</button>
-        <button class="btn" id="tCancelar">Cancelar prueba</button>
-      </div>
-    </div>
-    <div id="tFin" hidden></div>
-    <div id="tHistorial" class="izq"></div>
-  </section>
 </main>
 
 <script>
@@ -433,6 +422,7 @@ const ajustesIn = Object.assign({ activos: ["4J", "5J", "8J"], direccion: "asc" 
 ajustesIn.activos = TODOS_INT.filter(k => ajustesIn.activos.includes(k));
 if (ajustesIn.activos.length < 2) ajustesIn.activos = ["4J", "5J", "8J"];
 const estado = { modo: leer("oa-modo", "notas"), vista: leer("oa-vista", "plan") };
+if (estado.vista === "prueba") estado.vista = "plan";   // la pestaña Prueba ya no existe
 
 // =====================================================================
 //  SELECCIÓN CON REPASO ESPACIADO
@@ -680,7 +670,6 @@ const JUEGOS = {
       let oct; do { oct = azar(octs); } while (octs.length > 1 && prev && prev.en === id && prev.oct === oct);
       return { tipo: "nota", en: id, oct, timbre: elegirTimbre(oct) };
     },
-    sonidoPrueba: id => { const oct = azar(octavasDe(ajustes.octava)); return { tipo: "nota", en: id, oct, timbre: elegirTimbre(oct) }; },
     con: (s, id) => ({ ...s, en: id }),
     idDe: s => s.en,
     detalle: s => ajustes.timbre === "variado" ? `Timbre: ${nombreTimbre(s.timbre)}` : "",
@@ -694,7 +683,6 @@ const JUEGOS = {
     sonido(id) {
       return { tipo: "acorde", id, oct: azar(octavasDe(ajustesAc.octava)), inv: ajustesAc.posicion === "inversiones" ? azar([0, 1, 2]) : 0 };
     },
-    sonidoPrueba(id) { return this.sonido(id); },
     con: (s, id) => ({ ...s, id }),
     idDe: s => s.id,
     detalle: s => ajustesAc.posicion === "inversiones" ? ["Posición fundamental", "Primera inversión", "Segunda inversión"][s.inv] : "",
@@ -710,7 +698,6 @@ const JUEGOS = {
       const dir = ajustesIn.direccion === "ambas" ? azar(["asc", "desc"]) : ajustesIn.direccion;
       return { tipo: "intervalo", id, base: 48 + Math.floor(Math.random() * 36), dir };
     },
-    sonidoPrueba(id) { return this.sonido(id); },
     con: (s, id) => ({ ...s, id }),
     idDe: s => s.id,
     detalle: s => ajustesIn.direccion === "ambas" ? (s.dir === "asc" ? "Ascendente" : "Descendente") : "",
@@ -738,10 +725,9 @@ const PLANES = {
       { t: "Añade Si♭", items: [...NAT, "Gb", "Bb"], oct: "centro" },
       { t: "Añade Mi♭", items: [...NAT, "Eb", "Gb", "Bb"], oct: "centro" },
       { t: "Añade La♭", items: [...NAT, "Eb", "Gb", "Ab", "Bb"], oct: "centro" },
-      { t: "Añade Do♯", items: TODAS, oct: "centro" },
-      { t: "Las 12 notas en el bloque central", items: TODAS, oct: "centro", consejo: "Al superarla habrás completado la prioridad alta (octavas 3 a 5)." },
-      { t: "Registros de soporte (octavas 2–6)", items: TODAS, oct: "libre", umbral: 85, consejo: "Se añaden la octava 2 (bajos) y la 6 (agudos brillantes). En los extremos cuesta más; es normal." },
-      { t: "Timbres variados", items: TODAS, oct: "libre", timbre: "variado", umbral: 85, consejo: "Última fase. Después, mantenlo con unos minutos al día." },
+      { t: "Añade Do♯: las 12 notas", items: TODAS, oct: "centro", consejo: "Al superarla habrás completado la prioridad alta (octavas 3 a 5)." },
+      { t: "Registros de soporte (octavas 2–6)", items: TODAS, oct: "libre", consejo: "Se añaden la octava 2 (bajos) y la 6 (agudos brillantes). En los extremos cuesta más; es normal." },
+      { t: "Timbres variados", items: TODAS, oct: "libre", timbre: "variado", consejo: "Última fase. Después, mantenlo con unos minutos al día." },
     ],
   },
   acordes: {
@@ -758,7 +744,7 @@ const PLANES = {
       { t: "Añade Mi mayor", items: ["C", "D", "E", "F", "G", "A", "Am", "Dm", "Em"], pos: "inversiones", oct: "centro" },
       { t: "Añade Si♭ mayor", items: ["C", "D", "E", "F", "G", "A", "Bb", "Am", "Dm", "Em"], pos: "inversiones", oct: "centro" },
       { t: "Todos los mayores", items: [...TODAS, "Am", "Dm", "Em"], pos: "inversiones", oct: "centro" },
-      { t: "Todos los acordes", items: ACORDES.map(a => a.id), pos: "inversiones", oct: "centro", umbral: 85, consejo: "Al completarla, sigue con el plan de notas sueltas: en el método Eguchi los acordes preparan el paso a las notas." },
+      { t: "Todos los acordes", items: ACORDES.map(a => a.id), pos: "inversiones", oct: "centro", consejo: "Al completarla, sigue con el plan de notas sueltas: en el método Eguchi los acordes preparan el paso a las notas." },
     ],
   },
 };
@@ -773,15 +759,76 @@ PLANES.intervalos = {
     { t: "Añade las 6ª", items: ["2m", "2M", "3m", "3M", "4J", "5J", "6m", "6M", "8J"], dir: "asc" },
     { t: "Añade el tritono", items: ["2m", "2M", "3m", "3M", "4J", "TT", "5J", "6m", "6M", "8J"], dir: "asc" },
     { t: "Añade las 7ª: los 12 intervalos", items: TODOS_INT, dir: "asc" },
-    { t: "Descendentes", items: TODOS_INT, dir: "desc", umbral: 85, consejo: "Los mismos intervalos, ahora bajando. Suelen costar más: es normal." },
-    { t: "Ascendentes y descendentes", items: TODOS_INT, dir: "ambas", umbral: 85 },
-    { t: "Armónicos (a la vez)", items: TODOS_INT, dir: "arm", umbral: 85, consejo: "Las dos notas suenan juntas. Última fase del plan de intervalos." },
+    { t: "Descendentes", items: TODOS_INT, dir: "desc", consejo: "Los mismos intervalos, ahora bajando. Suelen costar más: es normal." },
+    { t: "Ascendentes y descendentes", items: TODOS_INT, dir: "ambas" },
+    { t: "Armónicos (a la vez)", items: TODOS_INT, dir: "arm", consejo: "Las dos notas suenan juntas. Última fase del plan de intervalos." },
   ],
 };
 const plan = modo => PLANES[modo];
-const estadoPlan = modo => leer(plan(modo).clave, { fase: 0 });
+// estado del plan: fase actual y la más alta alcanzada (no se puede saltar hacia delante).
+// v2: avance por progreso; la antigua fase 12 de notas (repetida) desaparece.
+function estadoPlan(modo) {
+  const e = leer(plan(modo).clave, { fase: 0 });
+  if (!e.v) {
+    if (modo === "notas" && e.fase >= 11) e.fase--;
+    e.v = 2; e.max = Math.max(e.max ?? 0, e.fase); guardar(plan(modo).clave, e);
+  }
+  return e;
+}
 const faseActual = modo => plan(modo).fases[Math.min(estadoPlan(modo).fase, plan(modo).fases.length - 1)];
-const umbral = f => f.umbral ?? 90;
+
+// =====================================================================
+//  PROGRESO DEL PLAN (sin prueba: se avanza al consolidar)
+// =====================================================================
+// Cada elemento (nota, acorde o intervalo) en unas condiciones (octavas, posición, dirección…) es una tarjeta.
+// Consolidada: acertada en un día posterior al primero, en al menos 2 días distintos y, en sus 8 últimas
+// apariciones, como mucho 1 fallo (el primer fallo de cada día no cuenta). El tiempo no cuenta.
+// Las respuestas con el Do de referencia no cuentan, y Cantar queda fuera del plan.
+const AVANCE = 0.85, VENTANA = 8;
+const dia = (t = Date.now()) => Math.floor((t - new Date(t).getTimezoneOffset() * 60000) / 86400000);
+const claveProg = modo => "oa-progreso-" + modo;
+const contexto = (modo, f) => modo === "notas" ? `o${f.oct}|${f.timbre || "piano"}` : modo === "acordes" ? `${f.pos}|o${f.oct}` : f.dir;
+function tarjetas(modo) { return leer(claveProg(modo), {}); }
+function registrarRespuesta(modo, f, id, ok) {
+  const todas = tarjetas(modo), k = contexto(modo, f) + ":" + id, d = dia();
+  const t = todas[k] || { primero: d, r: [] };
+  t.r.push([d, ok ? 1 : 0]);
+  if (t.r.length > 20) t.r = t.r.slice(-20);
+  todas[k] = t; guardar(claveProg(modo), todas);
+}
+// "nueva" (nunca practicada aquí), "camino" o "ok" (consolidada)
+function estadoTarjeta(t) {
+  if (!t || !t.r.length) return "nueva";
+  const diasOk = new Set(t.r.filter(([, ok]) => ok).map(([d]) => d));
+  const posterior = [...diasOk].some(d => d > t.primero);
+  const ult = t.r.slice(-VENTANA);
+  let fallos = 0;
+  ult.forEach(([d, ok], i) => {
+    if (ok) return;
+    // ¿es la primera aparición de ese día dentro del historial completo?
+    const idx = t.r.length - ult.length + i, primeraDelDia = !t.r.slice(0, idx).some(([d2]) => d2 === d);
+    if (!primeraDelDia) fallos++;
+  });
+  return posterior && diasOk.size >= 2 && fallos <= 1 ? "ok" : "camino";
+}
+function progresoFase(modo, i) {
+  const f = plan(modo).fases[i], todas = tarjetas(modo), ctx = contexto(modo, f);
+  const items = f.items.map(id => ({ id, e: estadoTarjeta(todas[ctx + ":" + id]) }));
+  const hechos = items.filter(x => x.e === "ok").length, necesarios = Math.ceil(AVANCE * items.length - 1e-9);
+  return { items, hechos, total: items.length, necesarios, superada: hechos >= necesarios };
+}
+// tras cada respuesta del plan: si la fase queda superada, se pasa a la siguiente
+function comprobarAvance(modo) {
+  const p = plan(modo), ep = estadoPlan(modo), i = Math.min(ep.fase, p.fases.length - 1);
+  if (!progresoFase(modo, i).superada) return null;
+  if (i === p.fases.length - 1) {
+    if (ep.completado) return null;
+    guardar(p.clave, { ...ep, completado: Date.now() });
+    return `🎉 ¡Has completado el plan de ${NOMBRE_MODO[modo].toLowerCase()}!`;
+  }
+  irAFase(modo, i + 1);
+  return `🎉 ¡Fase ${i + 1} superada! Pasas a la fase ${i + 2}: ${p.fases[i + 1].t}.`;
+}
 // ¿coinciden los ajustes actuales con los de la fase?
 function ajustesDeFase(modo, f) {
   if (modo === "notas") return mismos(ajustes.activas, f.items) && ajustes.octava === f.oct;
@@ -796,7 +843,8 @@ function aplicarFase(modo) {
   cambiarAjustes();
 }
 function irAFase(modo, i) {
-  guardar(plan(modo).clave, { fase: Math.max(0, Math.min(plan(modo).fases.length - 1, i)), desde: Date.now() });
+  const ep = estadoPlan(modo), fase = Math.max(0, Math.min(plan(modo).fases.length - 1, i));
+  guardar(plan(modo).clave, { ...ep, fase, max: Math.max(ep.max ?? 0, fase), desde: Date.now() });
   aplicarFase(modo);
   pintarPlan();
 }
@@ -805,10 +853,9 @@ const NOMBRE_MODO = { notas: "Notas sueltas", acordes: "Acordes", intervalos: "I
 
 function pintarPlan() {
   const modo = estado.modo, p = plan(modo), ep = estadoPlan(modo), i = Math.min(ep.fase, p.fases.length - 1), f = p.fases[i];
-  const pruebas = historial(modo).filter(t => t.fase === `${modo}-${i}`);
-  const ult = pruebas[pruebas.length - 1];
-  const superada = ult && 100 * ult.aciertos / ult.total >= umbral(f);
-  const ultima = i === p.fases.length - 1;
+  const pr = progresoFase(modo, i), ultima = i === p.fases.length - 1;
+  const MARCA = { ok: ["✓", "consolidada"], camino: ["◐", "en camino"], nueva: ["○", "sin practicar"] };
+  const estados = pr.items.map(x => `<span class="prog-item ${x.e}" title="${MARCA[x.e][1]}">${MARCA[x.e][0]} ${JUEGOS[modo].nombre(x.id)}</span>`).join("");
   const aplicados = ajustesDeFase(modo, f);
   $("planActual").innerHTML = `
     <p class="fase-num">${NOMBRE_MODO[modo]} · Fase ${i + 1} de ${p.fases.length}</p>
@@ -817,40 +864,41 @@ function pintarPlan() {
       <dt>${{ notas: "Notas", acordes: "Acordes", intervalos: "Intervalos" }[modo]}</dt><dd>${listaNombres(modo, f.items)}</dd>
       ${modo === "intervalos" ? `<dt>Dirección</dt><dd>${TEXTO_DIR[f.dir]}</dd>` : `<dt>Octava</dt><dd>${textoOctava(f.oct)}</dd>`}
       ${modo === "notas" ? `<dt>Timbre</dt><dd>${f.timbre === "variado" ? "variado" : "piano"}</dd>` : modo === "acordes" ? `<dt>Posición</dt><dd>${f.pos === "inversiones" ? "con inversiones" : "fundamental"}</dd>` : ""}
-      <dt>Para superarla</dt><dd>${umbral(f)} % o más en la prueba</dd>
+      <dt>Para avanzar</dt><dd>${pr.necesarios} de ${pr.total} consolidad${modo === "notas" ? "as" : "os"} (85 %)</dd>
     </dl>
     ${f.consejo ? `<p class="sub" style="margin:0">${f.consejo}</p>` : ""}
-    ${superada ? `<div class="aviso ok">✓ Fase superada con un ${Math.round(100 * ult.aciertos / ult.total)} %${ultima ? ". ¡Has completado el plan!" : ""}</div>`
-      : ult ? `<div class="aviso info">Última prueba de esta fase: ${Math.round(100 * ult.aciertos / ult.total)} % (${fechaCorta(ult.fecha)}). Sigue practicando y vuelve a intentarlo.</div>`
-      : `<div class="aviso info">Practica hasta que aciertes casi siempre sin dudar; entonces haz la prueba de la fase.</div>`}
+    <div class="progreso-fase">
+      <div class="barra"><span style="width:${Math.round(100 * pr.hechos / pr.necesarios) > 100 ? 100 : Math.round(100 * pr.hechos / pr.necesarios)}%"></span></div>
+      <p><b>${pr.hechos} de ${pr.total}</b> consolidad${modo === "notas" ? "as" : "os"}</p>
+      <div class="prog-items">${estados}</div>
+    </div>
+    ${pr.superada && ultima ? `<div class="aviso ok">✓ ¡Has completado el plan! Sigue practicando unos minutos al día para mantenerlo.</div>`
+      : `<div class="aviso info">Se consolida al acertarla en días distintos (al menos uno posterior al primero) y sin fallos repetidos en sus últimas ${VENTANA} apariciones. Al llegar al 85 % pasas solo a la fase siguiente. No cuentan las respuestas con el Do de referencia ni lo que practicas en Cantar.</div>`}
     <div class="acciones">
-      ${superada && !ultima ? `<button class="btn primario" id="planAvanzar">Pasar a la fase ${i + 2}</button>` : ""}
-      <button class="btn ${superada && !ultima ? "" : "primario"}" id="planPracticar">Practicar esta fase</button>
-      <button class="btn" id="planPrueba">Hacer la prueba</button>
+      <button class="btn primario" id="planPracticar">Practicar esta fase</button>
     </div>
     ${aplicados ? "" : `<p class="ayuda">Tus ajustes actuales no son los de esta fase; al pulsar un botón se aplican.</p>`}`;
-  if ($("planAvanzar")) $("planAvanzar").onclick = () => irAFase(modo, i + 1);
   $("planPracticar").onclick = () => { aplicarFase(modo); verPestana("practicar"); };
-  $("planPrueba").onclick = () => { aplicarFase(modo); verPestana("prueba"); };
 
   $("planRutina").innerHTML = modo === "notas"
     ? `<li><b>Escuchar</b> (2–3 min): las notas de la fase, diciendo su nombre mentalmente.</li>
        <li><b>Practicar</b> (10 min): con el borrador activado; responde lo primero que te venga.</li>
        <li><b>Cantar</b> (3–5 min): las mismas notas, intentando oírlas por dentro antes.</li>
-       <li>Mejor varias sesiones cortas al día que una larga. Haz la <b>prueba</b> cuando aciertes casi siempre, y como mínimo cada dos semanas.</li>`
+       <li>Mejor varias sesiones cortas al día que una larga, y <b>todos los días</b>: las notas se consolidan al acertarlas en días distintos.</li>`
     : modo === "intervalos"
     ? `<li><b>Escuchar</b> (2 min): cada intervalo de la fase, recordando su canción ancla.</li>
        <li><b>Practicar</b> (5–10 min): si dudas, canta por dentro el comienzo de la canción ancla.</li>
        <li><b>Cantar</b> (3–5 min): los mismos intervalos a partir de la nota que toca la app.</li>
-       <li>Haz la <b>prueba</b> cuando aciertes casi siempre.</li>`
+       <li>Practica a diario: los intervalos se consolidan al acertarlos en días distintos.</li>`
     : `<li>Como en el método Eguchi: <b>3–5 sesiones al día de 2–5 minutos</b>, mejor repartidas.</li>
        <li><b>Escuchar</b> (1 min): los acordes de la fase, diciendo su nombre.</li>
        <li><b>Practicar</b> (2–4 min): con el borrador activado.</li>
-       <li>Haz la <b>prueba</b> cuando aciertes casi siempre. Al terminar los acordes, sigue con el plan de notas sueltas.</li>`;
+       <li>El plan avanza solo al consolidar los acordes. Al terminarlo, sigue con el plan de notas sueltas.</li>`;
 
+  const max = Math.max(ep.max ?? 0, i);
   $("planLista").innerHTML = p.fases.map((x, k) => `<li class="${k < i ? "hecha" : k === i ? "actual" : ""}">
       <span class="marca">${k < i ? "✓" : k === i ? "▶" : k + 1}</span><span>${x.t}</span>
-      ${k !== i ? `<button class="chip mini" data-ir="${k}">Ir</button>` : ""}</li>`).join("");
+      ${k !== i && k <= max ? `<button class="chip mini" data-ir="${k}">Ir</button>` : ""}</li>`).join("");
   $("planLista").querySelectorAll("[data-ir]").forEach(b => b.onclick = () => {
     if (confirm(`¿Ir a la fase ${+b.dataset.ir + 1}: «${p.fases[+b.dataset.ir].t}»?`)) irAFase(modo, +b.dataset.ir);
   });
@@ -859,8 +907,9 @@ function pintarAvisoPlan() {
   const f = faseActual(estado.modo), i = estadoPlan(estado.modo).fase;
   const ok = ajustesDeFase(estado.modo, f);
   $("avisoPlan").hidden = false;
-  $("avisoPlan").innerHTML = ok ? `Plan: fase ${i + 1} · ${f.t}`
-    : `Estos ajustes no son los de tu fase del plan (${i + 1} · ${f.t}). <button class="chip mini" id="avisoAplicar">Usar los de la fase</button>`;
+  const pr = progresoFase(estado.modo, Math.min(i, plan(estado.modo).fases.length - 1));
+  $("avisoPlan").innerHTML = ok ? `Plan: fase ${i + 1} · ${f.t} · <b>${pr.hechos} de ${pr.necesarios}</b> para avanzar`
+    : `Estos ajustes no son los de tu fase del plan (${i + 1} · ${f.t}): es práctica libre y no cuenta para avanzar. <button class="chip mini" id="avisoAplicar">Usar los de la fase</button>`;
   if ($("avisoAplicar")) $("avisoAplicar").onclick = () => aplicarFase(estado.modo);
 }
 
@@ -885,17 +934,15 @@ function verPestana(cual) {
   actualizarVisibilidad();
   $("avisoPlan").hidden = true;
   ({ plan: pintarPlan, practicar: pausarPractica, cantar: pausarCanto, escuchar: pintarEscuchar,
-     prueba: () => { if (prueba) prueba.esperando = false; pintarPrueba(); } })[cual]();
-  if (cual === "practicar" || cual === "prueba") pintarAvisoPlan();
+  })[cual]();
+  if (cual === "practicar") pintarAvisoPlan();
 }
 function verModo(modo) {
-  if (prueba) { prueba = null; }
   estado.modo = modo; guardar("oa-modo", modo);
   document.querySelectorAll("[data-modo-btn]").forEach(b => b.classList.toggle("on", b.dataset.modoBtn === modo));
   pNota = null; pRespondida = true;
   pEstado("Pulsa «Empezar» cuando estés listo."); $("pSiguiente").textContent = "Empezar";
   pComparar = null; $("pFicha").hidden = true; ["pRepetir", "pReferencia"].forEach(id => $(id).hidden = true); $("pSiguiente").hidden = false;
-  $("tFin").dataset.visible = "0"; $("tFin").hidden = true;
   verPestana(estado.vista);
 }
 document.querySelectorAll(".pestana").forEach(b => b.onclick = () => verPestana(b.dataset.tab));
@@ -949,9 +996,8 @@ function pintarAjustes() {
 function cambiarAjustes() {
   guardar("oa-ajustes", ajustes); guardar("oa-ajustes-acordes", ajustesAc); guardar("oa-ajustes-intervalos", ajustesIn);
   pintarAjustes(); pintarPractica();
-  if (estado.vista === "prueba") pintarPrueba();
   if (estado.vista === "plan") pintarPlan();
-  if (estado.vista === "practicar" || estado.vista === "prueba") pintarAvisoPlan();
+  if (estado.vista === "practicar") pintarAvisoPlan();
 }
 $("borrador").onchange = e => { ajustes.borrador = e.target.checked; guardar("oa-ajustes", ajustes); };
 $("referencia").onchange = e => {
@@ -985,7 +1031,7 @@ function pintarPractica(marcas = {}) {
 async function siguiente() {
   const mia = ++ficha, j = juego();
   const id = j.sel.elegir(j.activos());
-  pNota = j.sonido(id, pNota);
+  pNota = j.sonido(id, pNota); pConReferencia = false;
   pComparar = null; pRespondida = true; pintarPractica(); $("pFicha").hidden = true;
   ["pRepetir", "pReferencia", "pSiguiente"].forEach(x => $(x).hidden = true);
   if (ajustes.borrador) { pEstado("Borrando…"); await borrar(); if (mia !== ficha) return; }
@@ -997,12 +1043,25 @@ async function siguiente() {
   tocar(pNota);
 }
 // Do de la misma octava (y el mismo timbre) que la nota que hay que adivinar
-const tocarReferencia = () => pNota && pNota.tipo === "nota" && tocar({ ...pNota, en: "C" });
+let pConReferencia = false;   // se oyó el Do de referencia antes de responder: no cuenta para el plan
+const tocarReferencia = () => {
+  if (!pNota || pNota.tipo !== "nota") return;
+  if (!pRespondida) pConReferencia = true;
+  tocar({ ...pNota, en: "C" });
+};
 function responder(id) {
   if (pRespondida || !pNota) return;
   const j = juego(), correcta = j.idDe(pNota);
   pRespondida = true; pElegida = id;
-  const ok = id === correcta, det = j.detalle(pNota), extra = det ? `<small>${det}</small>` : "";
+  const ok = id === correcta, det = j.detalle(pNota);
+  // plan: solo con los ajustes de la fase y sin el Do de referencia
+  let avance = null;
+  const fPlan = faseActual(estado.modo);
+  if (ajustesDeFase(estado.modo, fPlan) && !pConReferencia) {
+    registrarRespuesta(estado.modo, fPlan, correcta, ok);
+    avance = comprobarAvance(estado.modo);
+  }
+  const extra = (det ? `<small>${det}</small>` : "") + (avance ? `<small class="avance">${avance}</small>` : "");
   if (ok) { j.sel.acierto(id); pEstado(`<b>✓ ${j.nombre(id)}</b>Correcto${extra}`, "ok"); }
   else if (pNota.tipo === "intervalo") {
     // intervalos: qué notas sonaron y cuántos semitonos tiene cada intervalo
@@ -1036,7 +1095,8 @@ function responder(id) {
   $("pRepetir").hidden = true;
   $("pReferencia").hidden = !(estado.modo === "notas" && ajustes.referencia);
   $("pSiguiente").hidden = false; $("pSiguiente").textContent = "Siguiente";
-  if (ok) { const mia = ficha; setTimeout(() => { if (mia === ficha && estado.vista === "practicar") siguiente(); }, 1400); }
+  pintarAvisoPlan();
+  if (ok) { const mia = ficha; setTimeout(() => { if (mia === ficha && estado.vista === "practicar") siguiente(); }, avance ? 4000 : 1400); }
 }
 function pausarPractica() {
   pintarPractica();
@@ -1462,121 +1522,6 @@ function fichaIntervalo(s) {
 }
 
 
-// =====================================================================
-//  PRUEBA
-// =====================================================================
-const tResp = { notas: Teclado($("tTeclado"), id => responderPrueba(id)), acordes: BotonesAcordes($("tAcordes"), id => responderPrueba(id)),
-  intervalos: BotonesLista($("tIntervalos"), INTERVALOS, id => responderPrueba(id)) };
-let prueba = null;
-const claveHist = modo => ({ notas: "oa-pruebas", acordes: "oa-pruebas-acordes", intervalos: "oa-pruebas-intervalos" })[modo];
-const historial = modo => leer(claveHist(modo), []);
-const fechaCorta = ms => new Date(ms).toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" });
-
-function descripcionPrueba() {
-  const j = juego(), n = j.activos().length, rep = Math.ceil(20 / n);
-  if (estado.modo === "notas") return `${n * rep} notas · ${rep} de cada nota en juego · octava: ${textoOctava(ajustes.octava)} · timbre: ${ajustes.timbre === "variado" ? "variado" : "piano"} · sin ayudas`;
-  if (estado.modo === "intervalos") return `${n * rep} intervalos · ${rep} de cada intervalo en juego · ${TEXTO_DIR[ajustesIn.direccion]} · primera nota al azar · sin ayudas`;
-  return `${n * rep} acordes · ${rep} de cada acorde en juego · octava: ${textoOctava(ajustesAc.octava)} · ${ajustesAc.posicion === "inversiones" ? "con inversiones" : "posición fundamental"} · sin ayudas`;
-}
-function pintarPrueba() {
-  const enCurso = !!prueba, finVisible = $("tFin").dataset.visible === "1";
-  $("tIntro").hidden = enCurso || finVisible;
-  $("tCurso").hidden = !enCurso;
-  if (!enCurso && !finVisible) {
-    const h = historial(estado.modo), ult = h[h.length - 1], f = faseActual(estado.modo);
-    let txt = `<small>${descripcionPrueba()}</small>`;
-    if (ajustesDeFase(estado.modo, f)) txt += `<small>Cuenta como prueba de la fase ${estadoPlan(estado.modo).fase + 1} del plan (necesitas ${umbral(f)} %).</small>`;
-    if (ult) {
-      const dias = Math.floor((Date.now() - ult.fecha) / 864e5);
-      txt += `<small>Última prueba: ${dias === 0 ? "hoy" : dias === 1 ? "ayer" : `hace ${dias} días`} (${Math.round(100 * ult.aciertos / ult.total)} %)</small>`;
-    } else txt += "<small>Aún no has hecho ninguna prueba.</small>";
-    $("tIntroTexto").innerHTML = txt;
-  }
-  if (enCurso) {
-    const u = JUEGOS[prueba.modo].unidad[0];
-    $("tProgreso").textContent = `${u[0].toUpperCase() + u.slice(1)} ${prueba.i + 1} de ${prueba.items.length}`;
-    tResp[prueba.modo].pintar({ activas: prueba.activas, habilitado: !prueba.esperando });
-    if (!prueba.esperando) $("tEstado").innerHTML = `¿Qué ${juego().unidad[0]} es?<small>Pulsa «Repetir» si quieres oírlo otra vez.</small>`;
-  }
-  pintarHistorial();
-}
-function pintarHistorial() {
-  const h = historial(estado.modo);
-  if (!h.length || prueba) { $("tHistorial").innerHTML = ""; return; }
-  const nombreFase = t => { if (!t.fase) return ""; const [m, i] = t.fase.split("-"); return `Fase ${+i + 1}`; };
-  $("tHistorial").innerHTML = `<p class="label" style="margin-top:18px">Pruebas anteriores</p>
-    <table><tr><th>Fecha</th><th>Prueba</th><th class="num">Acierto</th></tr>
-    ${h.slice(-10).reverse().map(p => `<tr><td>${fechaCorta(p.fecha)}</td><td>${nombreFase(p) || `${p.notas} ${juego().unidad[1]}`}</td>
-      <td class="num">${Math.round(100 * p.aciertos / p.total)} %</td></tr>`).join("")}</table>`;
-}
-function empezarPrueba() {
-  const j = juego(), activas = j.activos().slice(), rep = Math.ceil(20 / activas.length);
-  let items = [];
-  activas.forEach(id => { for (let r = 0; r < rep; r++) items.push(j.sonidoPrueba(id)); });
-  for (let k = 0; k < 50; k++) {   // barajar evitando dos iguales seguidos
-    items.sort(() => Math.random() - 0.5);
-    if (items.every((x, i) => i === 0 || j.idDe(x) !== j.idDe(items[i - 1]))) break;
-  }
-  const f = faseActual(estado.modo);
-  prueba = { modo: estado.modo, activas, items, i: 0, respuestas: [], esperando: true,
-    fase: ajustesDeFase(estado.modo, f) ? `${estado.modo}-${estadoPlan(estado.modo).fase}` : null };
-  $("tFin").dataset.visible = "0"; $("tFin").hidden = true;
-  pintarPrueba(); tocarPrueba();
-}
-async function tocarPrueba() {
-  const mia = ++ficha;
-  prueba.esperando = true; pintarPrueba();
-  $("tEstado").innerHTML = "Borrando…";
-  await borrar();
-  if (mia !== ficha || !prueba) return;
-  prueba.esperando = false; pintarPrueba();
-  tocar(prueba.items[prueba.i]);
-}
-function responderPrueba(id) {
-  if (!prueba || prueba.esperando) return;
-  prueba.respuestas.push(id); prueba.i++;
-  if (prueba.i < prueba.items.length) return tocarPrueba();
-  terminarPrueba();
-}
-function terminarPrueba() {
-  const p = prueba; prueba = null;
-  const j = JUEGOS[p.modo], correctas = p.items.map(j.idDe);
-  const aciertos = correctas.filter((c, i) => c === p.respuestas[i]).length, pct = Math.round(100 * aciertos / correctas.length);
-  const h = historial(p.modo);
-  h.push({ fecha: Date.now(), notas: p.activas.length, aciertos, total: correctas.length, fase: p.fase });
-  guardar(claveHist(p.modo), h);
-  const filas = p.activas.map(id => {
-    const idx = correctas.map((c, i) => c === id ? i : -1).filter(i => i >= 0);
-    const bien = idx.filter(i => p.respuestas[i] === id).length;
-    const conf = [...new Set(idx.filter(i => p.respuestas[i] !== id).map(i => j.nombre(p.respuestas[i])))];
-    return `<tr><td>${j.nombre(id)}</td><td class="num ${bien < idx.length ? "mal" : ""}">${bien} / ${idx.length}</td>
-      <td>${conf.length ? (p.modo === "notas" ? "la" : "lo") + " confundiste con " + conf.join(", ") : ""}</td></tr>`;
-  }).join("");
-  let avisoFase = "";
-  if (p.fase) {
-    const i = +p.fase.split("-")[1], f = plan(p.modo).fases[i], ultima = i === plan(p.modo).fases.length - 1;
-    avisoFase = pct >= umbral(f)
-      ? `<div class="aviso ok">✓ Has superado la fase ${i + 1} («${f.t}»).${ultima ? " ¡Plan completado!" : ""}</div>
-         ${ultima ? "" : `<div class="acciones"><button class="btn primario" id="tAvanzar">Pasar a la fase ${i + 2}</button></div>`}`
-      : `<div class="aviso info">Para superar la fase ${i + 1} necesitas ${umbral(f)} %. Sigue practicando unos días y vuelve a intentarlo.</div>`;
-  }
-  const fin = $("tFin");
-  fin.innerHTML = `<div class="resultado">${pct} %</div>
-    <div class="estado" style="min-height:0">${aciertos} de ${correctas.length} aciertos</div>
-    ${avisoFase}
-    <table class="izq"><tr><th>${{ notas: "Nota", acordes: "Acorde", intervalos: "Intervalo" }[p.modo]}</th><th class="num">Aciertos</th><th></th></tr>${filas}</table>
-    <div class="acciones"><button class="btn" id="tVolver">Hecho</button></div>`;
-  fin.dataset.visible = "1"; fin.hidden = false;
-  $("tVolver").onclick = () => { fin.dataset.visible = "0"; fin.hidden = true; pintarPrueba(); };
-  if ($("tAvanzar")) $("tAvanzar").onclick = () => {
-    fin.dataset.visible = "0"; fin.hidden = true;
-    irAFase(p.modo, +p.fase.split("-")[1] + 1); verPestana("plan");
-  };
-  pintarPrueba();
-}
-$("tEmpezar").onclick = empezarPrueba;
-$("tRepetir").onclick = () => prueba && !prueba.esperando && tocar(prueba.items[prueba.i]);
-$("tCancelar").onclick = () => { ficha++; pararTodo(); prueba = null; pintarPrueba(); };
 
 // =====================================================================
 //  TECLADO FÍSICO
@@ -1589,9 +1534,6 @@ document.addEventListener("keydown", e => {
     else if (k === " " || k === "enter") { e.preventDefault(); if (!$("pSiguiente").hidden) siguiente(); }
     else if (k === "r" && pNota && !pRespondida) tocar(pNota);
     else if (k === "q" && !$("pReferencia").hidden) tocarReferencia();
-  } else if (estado.vista === "prueba" && prueba) {
-    if (id && prueba.activas.includes(id)) responderPrueba(id);
-    else if (k === "r" && !prueba.esperando) tocar(prueba.items[prueba.i]);
   } else if (estado.vista === "cantar" && (k === " " || k === "enter")) {
     e.preventDefault();
     if (!$("cCantar").hidden) cantar(); else if (!$("cSiguiente").hidden) siguienteCanto();
