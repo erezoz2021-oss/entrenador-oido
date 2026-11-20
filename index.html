@@ -89,6 +89,9 @@
   .barra span { display: block; height: 100%; background: var(--accent); }
   .barra.fina { height: 5px; }
   .barra.mini { height: 5px; margin: 4px 0 2px; max-width: 260px; }
+  .sesion-linea { color: var(--text) !important; margin-top: 6px; }
+  .sesion-linea.hecha { color: var(--ok) !important; font-weight: 600; }
+  .barra.sesion span { background: var(--ok); }
   .prog-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
   .prog-item { font-size: .8rem; padding: 2px 8px; border-radius: 10px; border: 1px solid var(--line); }
   .prog-item.ok { background: var(--ok-bg); border-color: var(--ok); color: var(--ok); }
@@ -256,6 +259,7 @@
     <div class="card fase-actual" id="planActual"></div>
     <div class="card">
       <h2>Rutina diaria</h2>
+      <div id="planSesion"></div>
       <ol class="rutina" id="planRutina"></ol>
     </div>
     <div class="card">
@@ -908,6 +912,35 @@ function progresoFase(modo, i) {
   const posiblesHoy = items.filter(x => x.e !== "ok" && x.hoy).length;
   return { items, hechos, total: items.length, necesarios, superada: faltan <= 0, faltan: Math.max(0, faltan), hoyPosible: posiblesHoy >= faltan };
 }
+// ----- sesión diaria del plan: minutos practicados hoy (solo en el plan, no en práctica libre) -----
+// Se cuenta el tiempo entre respuestas; las pausas de más de 1 minuto no cuentan.
+const DURACIONES = [3, 5, 10, 15, 20];
+const duracion = Object.assign({ notas: 10, acordes: 5, intervalos: 10 }, leer("oa-duracion", {}));
+function sesionHoy(modo) {
+  const s = leer("oa-sesion-" + modo, null);
+  return s && s.dia === dia() ? s : { dia: dia(), ms: 0, n: 0, ultimo: 0, aviso: 0 };
+}
+let pInicio = 0;   // cuándo empezó la pregunta actual
+function contarSesion(modo) {
+  const s = sesionHoy(modo), ahora = Date.now();
+  const desde = s.ultimo && ahora - s.ultimo < 60000 ? s.ultimo : pInicio;
+  s.ms += Math.max(0, Math.min(60000, ahora - desde)); s.n++; s.ultimo = ahora;
+  // aviso una sola vez por duración (si alargas la sesión, vuelve a avisar al terminarla)
+  const recienHecha = s.ms >= duracion[modo] * 60000 && s.aviso !== duracion[modo];
+  if (recienHecha) s.aviso = duracion[modo];
+  guardar("oa-sesion-" + modo, s);
+  return recienHecha;
+}
+function textoSesion(modo) {
+  const s = sesionHoy(modo), total = duracion[modo], min = Math.floor(s.ms / 60000);
+  const quedan = Math.max(0, Math.ceil((total * 60000 - s.ms) / 60000));
+  const hecha = s.ms >= total * 60000;
+  return { pct: Math.min(100, Math.round(100 * s.ms / (total * 60000))), hecha,
+    txt: hecha ? `✓ Sesión de hoy completada (${min} min, ${s.n} respuestas). Puedes seguir o volver mañana.`
+      : s.n ? `Sesión de hoy: ${min} de ${total} min · quedan unos ${quedan} min · ${s.n} respuesta${s.n > 1 ? "s" : ""}`
+      : `Sesión de hoy: ${total} min (aún no has empezado)` };
+}
+
 // avance de todo el plan: fases completas + parte de la actual
 function progresoPlan(modo) {
   const p = plan(modo), i = Math.min(estadoPlan(modo).fase, p.fases.length - 1), pr = progresoFase(modo, i);
@@ -980,6 +1013,13 @@ function pintarPlan() {
     ${aplicados ? "" : `<p class="ayuda">Tus ajustes actuales no son los de esta fase; al pulsar un botón se aplican.</p>`}`;
   $("planPracticar").onclick = () => { libre[modo] = false; guardar("oa-libre", libre); aplicarFase(modo); verPestana("practicar"); };
 
+  const ts = textoSesion(modo);
+  $("planSesion").innerHTML = `<p class="label">Duración de la sesión de práctica del plan</p>
+    <div class="row" id="chipsDuracion"></div>
+    <p style="margin:10px 0 4px;font-size:.9rem">${ts.txt}</p>
+    <div class="barra fina"><span style="width:${ts.pct}%"></span></div>`;
+  chips($("chipsDuracion"), DURACIONES.map(m => [m, m + " min"]), v => duracion[modo] === v,
+    v => { duracion[modo] = v; guardar("oa-duracion", duracion); pintarPlan(); });
   $("planRutina").innerHTML = modo === "notas"
     ? `<li><b>Escuchar</b> (2–3 min): las notas de la fase, diciendo su nombre mentalmente.</li>
        <li><b>Practicar</b> (10 min): con el borrador activado; responde lo primero que te venga.</li>
@@ -1026,6 +1066,8 @@ function pintarAvisoPlan() {
         <small>${resumenFase(estado.modo, f)}</small>
         <small><b>${pr.hechos} de ${pr.necesarios}</b> consolidad${estado.modo === "notas" ? "as" : "os"} para avanzar${pr.superada ? "" : pr.hoyPosible ? " · puedes lograrlo hoy" : " · como pronto, mañana"} · plan al ${progresoPlan(estado.modo).pct} %</small>
         <div class="barra mini"><span style="width:${Math.min(100, Math.round(100 * pr.hechos / pr.necesarios))}%"></span></div>
+        <small class="sesion-linea${textoSesion(estado.modo).hecha ? " hecha" : ""}">${textoSesion(estado.modo).txt}</small>
+        <div class="barra mini sesion"><span style="width:${textoSesion(estado.modo).pct}%"></span></div>
         <small class="prog-chips">${pr.items.map(x => `<span class="prog-item ${x.e}" title="${x.e === "ok" ? "consolidada" : "Falta: " + x.falta}">${{ ok: "✓", camino: "◐", revalidar: "↻", nueva: "○" }[x.e]} ${JUEGOS[estado.modo].nombre(x.id)}</span>`).join("")}</small></div>
       <button class="chip mini" id="irLibre">Práctica libre (cambiar ajustes)</button>`;
     $("irLibre").onclick = () => ponerLibre(true);
@@ -1156,7 +1198,7 @@ function pintarPractica(marcas = {}) {
 async function siguiente() {
   const mia = ++ficha, j = juego();
   const id = j.sel.elegir(j.activos());
-  pNota = j.sonido(id, pNota); pConReferencia = false;
+  pNota = j.sonido(id, pNota); pConReferencia = false; pInicio = Date.now();
   pComparar = null; pRespondida = true; pintarPractica(); $("pFicha").hidden = true;
   ["pRepetir", "pReferencia", "pSiguiente"].forEach(x => $(x).hidden = true);
   if (ajustes.borrador) {
@@ -1185,13 +1227,15 @@ function responder(id) {
   pRespondida = true; pElegida = id;
   const ok = id === correcta, det = j.detalle(pNota);
   // plan: solo con los ajustes de la fase y sin el Do de referencia
-  let avance = null;
+  let avance = null, sesionFin = false;
   const fPlan = faseActual(estado.modo);
+  if (!esLibre()) sesionFin = contarSesion(estado.modo);
   if (!esLibre() && ajustesDeFase(estado.modo, fPlan) && !pConReferencia) {
     registrarRespuesta(estado.modo, fPlan, correcta, ok, Math.min(estadoPlan(estado.modo).fase, plan(estado.modo).fases.length - 1));
     avance = comprobarAvance(estado.modo);
   }
-  const extra = (det ? `<small>${det}</small>` : "") + (avance ? `<small class="avance">${avance}</small>` : "");
+  const extra = (det ? `<small>${det}</small>` : "") + (avance ? `<small class="avance">${avance}</small>` : "")
+    + (sesionFin ? `<small class="avance">✓ Has completado la sesión de hoy (${duracion[estado.modo]} min). Puedes seguir si quieres.</small>` : "");
   if (ok) { j.sel.acierto(id); pEstado(`<b>✓ ${j.nombre(id)}</b>Correcto${extra}`, "ok"); }
   else if (pNota.tipo === "intervalo") {
     // intervalos: qué notas sonaron y cuántos semitonos tiene cada intervalo
@@ -1226,7 +1270,7 @@ function responder(id) {
   $("pReferencia").hidden = !(estado.modo === "notas" && ajustes.referencia);
   $("pSiguiente").hidden = false; $("pSiguiente").textContent = "Siguiente";
   pintarAvisoPlan();
-  if (ok) { const mia = ficha; setTimeout(() => { if (mia === ficha && estado.vista === "practicar") siguiente(); }, avance ? 4000 : 1400); }
+  if (ok) { const mia = ficha; setTimeout(() => { if (mia === ficha && estado.vista === "practicar") siguiente(); }, avance || sesionFin ? 4000 : 1400); }
 }
 function pausarPractica() {
   pintarPractica();
