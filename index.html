@@ -245,7 +245,7 @@
       <label class="switch">
         <input type="checkbox" id="borrador" checked>
         <span>Borrar el sonido anterior
-          <small>Un sonido breve antes de cada pregunta para que no puedas compararla con la anterior. En notas y acordes son notas al azar, que borran mucho mejor la memoria de la anterior.</small>
+          <small>Un sonido breve antes de cada pregunta para que no puedas compararla con la anterior. Son notas al azar, que borran mucho mejor la memoria de la anterior.</small>
         </span>
       </label>
     </div>
@@ -628,7 +628,7 @@ function borrar() {
 }
 // Borrador con notas: 8 notas de piano rápidas y al azar (octavas 2 a 6), sin la clase de la nota
 // (o las del acorde) que va a sonar. Unas notas intermedias borran la memoria de la anterior mucho
-// mejor que un ruido (Deutsch, 1970), así no se puede comparar con ella. Se usa en notas y acordes.
+// mejor que un ruido (Deutsch, 1970), así no se puede comparar con ella. Se usa al practicar en todos los modos.
 const BORRADOR_N = 8, BORRADOR_PASO = 0.17;
 async function borrarConNotas(excluir = []) {
   const ev = []; let prev = -1;
@@ -641,7 +641,8 @@ async function borrarConNotas(excluir = []) {
   await tocarEventos(ev, ++fichaSonido);
   return espera((BORRADOR_N * BORRADOR_PASO + 0.45 + 0.6) * 1000);
 }
-const clasesDe = s => s.tipo === "nota" ? [POR_EN[s.en].pc] : s.tipo === "acorde" ? notasAcorde(s).map(n => POR_EN[n.en].pc) : [];
+const clasesDe = s => s.tipo === "nota" ? [POR_EN[s.en].pc] : s.tipo === "acorde" ? notasAcorde(s).map(n => POR_EN[n.en].pc)
+  : s.tipo === "intervalo" ? midisIntervalo(s).map(m => ((m % 12) + 12) % 12) : [];
 
 // =====================================================================
 //  COMPONENTES DE RESPUESTA
@@ -1159,10 +1160,9 @@ async function siguiente() {
   pComparar = null; pRespondida = true; pintarPractica(); $("pFicha").hidden = true;
   ["pRepetir", "pReferencia", "pSiguiente"].forEach(x => $(x).hidden = true);
   if (ajustes.borrador) {
-    // en notas y acordes (plan y práctica libre) el borrador son notas al azar; en intervalos, el ruido
-    const conNotas = estado.modo !== "intervalos";
+    // el borrador son notas al azar (sin las notas que van a sonar) en todos los modos
     pEstado("Borrando…");
-    await (conNotas ? borrarConNotas(clasesDe(pNota)) : borrar());
+    await borrarConNotas(clasesDe(pNota));
     if (mia !== ficha) return;
   }
   pRespondida = false; pintarPractica();
