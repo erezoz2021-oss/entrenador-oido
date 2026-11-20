@@ -90,6 +90,11 @@
   .barra.fina { height: 5px; }
   .barra.mini { height: 5px; margin: 4px 0 2px; max-width: 260px; }
   .sesion-linea { color: var(--text) !important; margin-top: 6px; }
+  .crono-caja { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-left: auto; }
+  .crono { font-size: 1.6rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--accent); text-align: center; line-height: 1.1; }
+  .crono small { display: block; font-size: .7rem; font-weight: 500; color: var(--muted); letter-spacing: .03em; }
+  .crono.pausa { color: var(--muted); }
+  .crono.hecha { color: var(--ok); }
   .sesion-linea.hecha { color: var(--ok) !important; font-weight: 600; }
   .barra.sesion span { background: var(--ok); }
   .prog-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
@@ -931,6 +936,23 @@ function contarSesion(modo) {
   guardar("oa-sesion-" + modo, s);
   return recienHecha;
 }
+// cronómetro en vivo: lo ya contado + lo que va de la pregunta actual (mismo criterio que contarSesion)
+function msSesionAhora(modo) {
+  const s = sesionHoy(modo), ahora = Date.now();
+  if (!pNota || !pInicio) return { ms: s.ms, pausa: true };
+  const desde = s.ultimo && ahora - s.ultimo < 60000 ? Math.max(s.ultimo, pInicio) : pInicio;
+  const extra = ahora - desde;
+  return extra >= 60000 ? { ms: s.ms, pausa: true } : { ms: s.ms + Math.max(0, extra), pausa: false };
+}
+const mmss = ms => { const t = Math.max(0, Math.round(ms / 1000)); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`; };
+function pintarCrono() {
+  const el = $("crono");
+  if (!el) return;
+  const total = duracion[estado.modo] * 60000, { ms, pausa } = msSesionAhora(estado.modo), resta = total - ms;
+  el.classList.toggle("hecha", resta <= 0); el.classList.toggle("pausa", pausa && resta > 0);
+  el.innerHTML = resta > 0 ? `⏱ ${mmss(resta)}<small>${pausa ? "en pausa" : "quedan"}</small>` : `✓ ${mmss(ms)}<small>sesión hecha</small>`;
+}
+setInterval(() => { if (estado.vista === "practicar" && !esLibre()) pintarCrono(); }, 1000);
 function textoSesion(modo) {
   const s = sesionHoy(modo), total = duracion[modo], min = Math.floor(s.ms / 60000);
   const quedan = Math.max(0, Math.ceil((total * 60000 - s.ms) / 60000));
@@ -1069,8 +1091,10 @@ function pintarAvisoPlan() {
         <small class="sesion-linea${textoSesion(estado.modo).hecha ? " hecha" : ""}">${textoSesion(estado.modo).txt}</small>
         <div class="barra mini sesion"><span style="width:${textoSesion(estado.modo).pct}%"></span></div>
         <small class="prog-chips">${pr.items.map(x => `<span class="prog-item ${x.e}" title="${x.e === "ok" ? "consolidada" : "Falta: " + x.falta}">${{ ok: "✓", camino: "◐", revalidar: "↻", nueva: "○" }[x.e]} ${JUEGOS[estado.modo].nombre(x.id)}</span>`).join("")}</small></div>
-      <button class="chip mini" id="irLibre">Práctica libre (cambiar ajustes)</button>`;
+      <div class="crono-caja"><div class="crono" id="crono"></div>
+      <button class="chip mini" id="irLibre">Práctica libre (cambiar ajustes)</button></div>`;
     $("irLibre").onclick = () => ponerLibre(true);
+    pintarCrono();
     return;
   }
   $("avisoPlan").className = "rotulo-plan libre";
