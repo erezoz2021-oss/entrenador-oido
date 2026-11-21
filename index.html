@@ -248,6 +248,12 @@
       <p class="label">Dirección</p>
       <div class="row" id="chipsDireccion"></div>
     </div>
+    <!-- cantar: tesitura -->
+    <div class="bloque" data-solo="cantar">
+      <p class="label">Tu voz</p>
+      <div class="row" id="chipsVoz"></div>
+      <p class="ayuda" style="text-align:left;margin-top:6px" id="vozAyuda"></p>
+    </div>
     <!-- común -->
     <div class="bloque" data-solo="practicar cantar">
       <label class="switch">
@@ -300,8 +306,9 @@
       <button class="btn primario" id="cCantar" hidden>🎤 Cantar</button>
       <button class="btn" id="cOirCorrecta" hidden>Oír la correcta</button>
       <button class="btn" id="cOirTuya" hidden>Oír lo que cantaste</button>
+      <button class="btn" id="cReferencia" hidden>Do de referencia</button>
     </div>
-    <p class="ayuda" data-modo="notas">Canta la nota en la octava que te resulte cómoda y mantenla un segundo. Da igual la octava.</p>
+    <p class="ayuda" data-modo="notas">Canta la nota en la octava que te resulte cómoda y mantenla un segundo. Da igual la octava. Si te cuesta encontrarla, usa el «Do de referencia»: suena en tu registro y desde él puedes llegar a la nota.</p>
     <p class="ayuda" data-modo="intervalos">Escucha la nota de partida, canta la nota que forma el intervalo y mantenla un segundo. Si te resulta más cómodo, puedes cantarla una octava más grave o más aguda.</p>
   </section>
 
@@ -439,7 +446,7 @@ const ANCLAS_INT_SUGERIDAS = {
 function leer(clave, defecto) { try { const v = localStorage.getItem(clave); return v ? JSON.parse(v) : defecto; } catch { return defecto; } }
 function guardar(clave, valor) { try { localStorage.setItem(clave, JSON.stringify(valor)); } catch {} }
 
-const ajustes = Object.assign({ activas: NATURALES.slice(), octava: "libre", borrador: true, timbre: "piano", referencia: false },
+const ajustes = Object.assign({ activas: NATURALES.slice(), octava: "libre", borrador: true, timbre: "piano", referencia: false, voz: "bajo" },
   leer("oa-ajustes", {}));
 ajustes.activas = TODAS.filter(k => ajustes.activas.includes(k));
 if (typeof ajustes.octava === "number" && !OCTAVAS.includes(ajustes.octava)) ajustes.octava = "libre";   // ya no se usan la 1 ni la 7
@@ -1186,6 +1193,9 @@ function pintarAjustes() {
   });
   chips($("chipsDireccion"), [["asc", "Ascendente"], ["desc", "Descendente"], ["ambas", "Ambas"], ["arm", "Armónico"]],
     v => ajustesIn.direccion === v, v => { ajustesIn.direccion = v; cambiarAjustes(); });
+  chips($("chipsVoz"), Object.entries(VOCES).map(([k, v]) => [k, v.nombre]), v => ajustes.voz === v, v => { ajustes.voz = v; cambiarAjustes(); });
+  const vz = voz();
+  $("vozAyuda").textContent = `Tesitura cómoda: ${textoNotaMidi(vz.lo)} a ${textoNotaMidi(vz.hi)}. La referencia y las notas de partida se tocan en tu registro.`;
 }
 function cambiarAjustes() {
   guardar("oa-ajustes", ajustes); guardar("oa-ajustes-acordes", ajustesAc); guardar("oa-ajustes-intervalos", ajustesIn);
@@ -1330,6 +1340,23 @@ $("pRepetir").onclick = () => pNota && tocar(pNota);
 //  CANTAR (solo notas sueltas)
 // =====================================================================
 const selCantar = new Selector("oa-pesos-canto");
+// tesituras (midi): lo cómodo para cantar sin forzar
+const VOCES = {
+  bajo: { nombre: "Bajo", lo: 40, hi: 62 },          // Mi2 – Re4
+  baritono: { nombre: "Barítono", lo: 43, hi: 65 },  // Sol2 – Fa4
+  tenor: { nombre: "Tenor", lo: 48, hi: 69 },        // Do3 – La4
+  contralto: { nombre: "Contralto", lo: 53, hi: 74 },// Fa3 – Re5
+  soprano: { nombre: "Soprano", lo: 60, hi: 81 },    // Do4 – La5
+};
+const voz = () => VOCES[ajustes.voz] || VOCES.bajo;
+// la nota (clase pc) en tu registro: la más cercana al centro de tu tesitura (o a 'cerca' si se da)
+function enTuRegistro(pc, cerca = null) {
+  const v = voz(), c = cerca ?? (v.lo + v.hi) / 2;
+  let mejor = null;
+  for (let m = v.lo; m <= v.hi; m++) if (((m % 12) + 12) % 12 === pc && (mejor === null || Math.abs(m - c) < Math.abs(mejor - c))) mejor = m;
+  return mejor ?? Math.round(c);
+}
+let cConRef = false;   // se oyó el Do de referencia antes de cantar
 const selCantarInt = new Selector("oa-pesos-canto-intervalos");
 let cInt = null;   // { id, base, dir } en modo intervalos
 const cTitulo = (pie) => estado.modo === "intervalos"
@@ -1337,16 +1364,19 @@ const cTitulo = (pie) => estado.modo === "intervalos"
   : `<small>Canta</small><span class="grande">${nombre(cObjetivo)}</span><small>${pie}</small>`;
 let cObjetivo = null, cCantada = null, cOirObjetivo = null, micro = null, bucle = null;
 function cEstado(html, clase = "") { const e = $("cEstado"); e.innerHTML = html; e.className = "estado " + clase; }
-function cBotones(v) { ["cSiguiente", "cCantar", "cOirCorrecta", "cOirTuya"].forEach(id => $(id).hidden = !v.includes(id)); }
+function cBotones(v) { ["cSiguiente", "cCantar", "cOirCorrecta", "cOirTuya", "cReferencia"].forEach(id => $(id).hidden = !v.includes(id)); }
 async function siguienteCanto() {
   const mia = ++ficha;
   cCantada = null;
   if (estado.modo === "intervalos") {
     const id = selCantarInt.elegir(ajustesIn.activos);
     const dir = ajustesIn.direccion === "desc" ? "desc" : ajustesIn.direccion === "ambas" ? azar(["asc", "desc"]) : "asc";
-    // nota de partida cómoda para cantar (Do3-Do4 si sube, Sol3-Sol4 si baja)
-    cInt = { tipo: "intervalo", id, dir, base: (dir === "asc" ? 48 : 55) + Math.floor(Math.random() * 13) };
+    // nota de partida dentro de tu tesitura, de modo que la nota que cantas también quede en ella
+    const semi = INTERVALO[id].semi, v = voz();
+    const desde = dir === "asc" ? v.lo : v.lo + semi, hasta = dir === "asc" ? v.hi - semi : v.hi;
+    cInt = { tipo: "intervalo", id, dir, base: desde + Math.floor(Math.random() * (Math.max(desde, hasta) - desde + 1)) };
   } else cObjetivo = selCantar.elegir(ajustes.activas);
+  cConRef = false;
   cBotones([]);
   if (ajustes.borrador) { cEstado("Borrando…"); await borrar(); if (mia !== ficha) return; }
   if (estado.modo === "intervalos") {
@@ -1356,8 +1386,8 @@ async function siguienteCanto() {
     cOirObjetivo = { tipo: "nota", en: desdeMidi(cInt.base).en, oct: desdeMidi(cInt.base).oct, timbre: "piano" };
     tocar(cOirObjetivo);
   } else {
-    cEstado(cTitulo("Pulsa «Cantar» cuando la tengas en la cabeza."));
-    cBotones(["cCantar"]);
+    cEstado(cTitulo(`Pulsa «Cantar» cuando la tengas en la cabeza. En tu registro: ${textoNotaMidi(enTuRegistro(POR_EN[cObjetivo].pc))}.`));
+    cBotones(["cCantar", "cReferencia"]);
   }
 }
 async function abrirMicro() {
@@ -1415,21 +1445,23 @@ async function cantar() {
   }, 45);
 }
 function evaluarCanto(tonos) {
-  if (tonos.length < 10) { cEstado("No te he oído bien. Acércate al micrófono y canta un poco más fuerte.", "bad"); return cBotones(estado.modo === "intervalos" ? ["cCantar", "cOirCorrecta"] : ["cCantar"]); }
+  if (tonos.length < 10) { cEstado("No te he oído bien. Acércate al micrófono y canta un poco más fuerte.", "bad"); return cBotones(estado.modo === "intervalos" ? ["cCantar", "cOirCorrecta"] : ["cCantar", "cReferencia"]); }
   if (estado.modo === "intervalos") return evaluarCantoIntervalo(tonos);
   const est = tonos.slice(Math.floor(tonos.length * 0.3)).sort((a, b) => a - b), f = est[Math.floor(est.length / 2)];
   const midi = 69 + 12 * Math.log2(f / 440), red = Math.round(midi), cents = Math.round((midi - red) * 100);
   const cantada = NOTAS[((red % 12) + 12) % 12].en, octCant = Math.min(7, Math.max(1, Math.floor(red / 12) - 1));
   const pcObj = POR_EN[cObjetivo].pc;
-  const octObj = OCTAVAS.reduce((m, o) => Math.abs(12 * (o + 1) + pcObj - midi) < Math.abs(12 * (m + 1) + pcObj - midi) ? o : m, 4);
+  // la correcta, en tu registro y lo más cerca posible de lo que cantaste
+  const octObj = desdeMidi(enTuRegistro(pcObj, midi)).oct;
   cCantada = { tipo: "nota", en: cantada, oct: octCant, timbre: "piano" };
   const desv = `${cents >= 0 ? "+" : "−"}${Math.abs(cents)} cents`, ok = cantada === cObjetivo;
-  if (ok) { selCantar.acierto(cObjetivo); cEstado(`<b>✓ ${nombre(cantada)}</b>Bien cantada (${desv})`, "ok"); }
-  else { selCantar.fallo(cObjetivo, ajustes.activas.includes(cantada) ? cantada : null); cEstado(`<b>✗ Era ${nombre(cObjetivo)}</b>Cantaste ${nombre(cantada)} (${desv})`, "bad"); }
+  const conRef = cConRef ? "<small>Con el Do de referencia</small>" : "";
+  if (ok) { selCantar.acierto(cObjetivo); cEstado(`<b>✓ ${nombre(cantada)}</b>Bien cantada: ${nombre(cantada)}${octCant} (${desv})${conRef}`, "ok"); }
+  else { selCantar.fallo(cObjetivo, ajustes.activas.includes(cantada) ? cantada : null); cEstado(`<b>✗ Era ${nombre(cObjetivo)}</b>Cantaste ${nombre(cantada)}${octCant} (${desv})${conRef}`, "bad"); }
   cOirObjetivo = { tipo: "nota", en: cObjetivo, oct: octObj, timbre: "piano" };
   $("cOirCorrecta").textContent = "Oír la correcta";
   tocar(cOirObjetivo);
-  cBotones(ok ? ["cSiguiente", "cOirCorrecta"] : ["cSiguiente", "cOirCorrecta", "cOirTuya"]);
+  cBotones(ok ? ["cSiguiente", "cOirCorrecta", "cReferencia"] : ["cSiguiente", "cOirCorrecta", "cOirTuya", "cReferencia"]);
   $("cSiguiente").textContent = "Siguiente";
 }
 function evaluarCantoIntervalo(tonos) {
@@ -1459,6 +1491,11 @@ $("cSiguiente").onclick = siguienteCanto;
 $("cCantar").onclick = cantar;
 $("cOirCorrecta").onclick = () => cOirObjetivo && tocar(cOirObjetivo);
 $("cOirTuya").onclick = () => cCantada && tocar(cCantada);
+// Do de referencia en tu registro (el Do más cercano al centro de tu tesitura; Do3 para un bajo)
+$("cReferencia").onclick = () => {
+  if (!$("cCantar").hidden) cConRef = true;   // antes de cantar
+  tocar({ tipo: "nota", ...desdeMidi(enTuRegistro(0)), timbre: "piano" });
+};
 
 // =====================================================================
 //  ESCUCHAR
