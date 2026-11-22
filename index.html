@@ -90,6 +90,16 @@
   .barra.fina { height: 5px; }
   .barra.mini { height: 5px; margin: 4px 0 2px; max-width: 260px; }
   .sesion-linea { color: var(--text) !important; margin-top: 6px; }
+  .informe-cab { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  .informe-cab > div { display: flex; flex-direction: column; gap: 2px; }
+  .informe-cab small { color: var(--muted); font-size: .82rem; }
+  .informe-cab small.sube { color: var(--ok); } .informe-cab small.baja { color: var(--bad); }
+  .informe-pct { font-size: 2.2rem; font-weight: 700; color: var(--accent); line-height: 1; }
+  .informe-tabla td { padding: 4px 6px; }
+  .informe-tabla .barra-celda { width: 40%; }
+  .barra.baja span { background: var(--bad); }
+  td.mal { color: var(--bad); font-weight: 600; }
+  .consejos { margin: 4px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: .9rem; }
   .crono-caja { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-left: auto; }
   .crono { font-size: 1.6rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--accent); text-align: center; line-height: 1.1; }
   .crono small { display: block; font-size: .7rem; font-weight: 500; color: var(--muted); letter-spacing: .03em; }
@@ -268,6 +278,7 @@
   <!-- ================= PLAN ================= -->
   <section data-vista="plan" hidden>
     <div class="card fase-actual" id="planActual"></div>
+    <div class="card" id="planInforme"></div>
     <div class="card">
       <h2>Rutina diaria</h2>
       <div id="planSesion"></div>
@@ -930,12 +941,24 @@ const DURACIONES = [3, 5, 10, 15, 20];
 const duracion = Object.assign({ notas: 10, acordes: 5, intervalos: 10 }, leer("oa-duracion", {}));
 function sesionHoy(modo) {
   const s = leer("oa-sesion-" + modo, null);
-  return s && s.dia === dia() ? s : { dia: dia(), ms: 0, n: 0, ultimo: 0, aviso: 0 };
+  if (s && s.dia === dia()) return s;
+  // día nuevo: la sesión anterior se guarda (resumida) para compararla y poder verla después
+  if (s && s.n && s.log) {
+    const arch = leer("oa-informes-" + modo, []);
+    if (!arch.some(x => x.dia === s.dia)) { arch.push(estadisticas(modo, s)); guardar("oa-informes-" + modo, arch.slice(-30)); }
+  }
+  return { dia: dia(), ms: 0, n: 0, ultimo: 0, aviso: 0, log: [] };
 }
 let pInicio = 0;   // cuándo empezó la pregunta actual
 let pPausada = false;   // práctica en pausa: el cronómetro no corre
-function contarSesion(modo) {
+// detalle de cada respuesta para el informe: [correcta, elegida, categoría (octava/inversión/dirección), con referencia]
+function categoriaDe(s) { return s.tipo === "nota" ? s.oct : s.tipo === "acorde" ? s.inv : s.dir; }
+function contarSesion(modo, correcta, elegida) {
   const s = sesionHoy(modo), ahora = Date.now();
+  if (!s.log) s.log = [];
+  if (!s.n) s.inicio = { fase: estadoPlan(modo).fase, ok: progresoFase(modo, Math.min(estadoPlan(modo).fase, plan(modo).fases.length - 1)).items.filter(x => x.e === "ok").map(x => x.id) };
+  s.log.push([correcta, elegida, categoriaDe(pNota), pConReferencia ? 1 : 0]);
+  if (s.log.length > 800) s.log = s.log.slice(-800);
   const desde = s.ultimo && ahora - s.ultimo < 60000 ? s.ultimo : pInicio;
   s.ms += Math.max(0, Math.min(60000, ahora - desde)); s.n++; s.ultimo = ahora;
   // aviso una sola vez por duración (si alargas la sesión, vuelve a avisar al terminarla)
@@ -969,6 +992,94 @@ function textoSesion(modo) {
     txt: hecha ? `✓ Sesión de hoy completada (${min} min, ${s.n} respuestas). Puedes seguir o volver mañana.`
       : s.n ? `Sesión de hoy: ${min} de ${total} min · quedan unos ${quedan} min · ${s.n} respuesta${s.n > 1 ? "s" : ""}`
       : `Sesión de hoy: ${total} min (aún no has empezado)` };
+}
+
+// ----- informe de la sesión -----
+const NOMBRE_CAT = { notas: "octava", acordes: "posición", intervalos: "dirección" };
+const textoCat = (modo, c) => modo === "notas" ? `Octava ${c}` : modo === "acordes" ? INVERSIONES[c][0].toUpperCase() + INVERSIONES[c].slice(1)
+  : { asc: "Ascendente", desc: "Descendente", arm: "Armónico" }[c] || c;
+function estadisticas(modo, s) {
+  const log = s.log || [], porItem = {}, porCat = {}, conf = {};
+  let ok = 0, ref = 0;
+  for (const [c, e, cat, r] of log) {
+    const bien = c === e; if (bien) ok++; if (r) ref++;
+    (porItem[c] ||= [0, 0])[1]++; if (bien) porItem[c][0]++;
+    (porCat[cat] ||= [0, 0])[1]++; if (bien) porCat[cat][0]++;
+    if (!bien) conf[c + "→" + e] = (conf[c + "→" + e] || 0) + 1;
+  }
+  const consolidadasHoy = s.inicio && s.inicio.fase === estadoPlan(modo).fase && s.dia === dia()
+    ? progresoFase(modo, Math.min(estadoPlan(modo).fase, plan(modo).fases.length - 1)).items.filter(x => x.e === "ok" && !s.inicio.ok.includes(x.id)).map(x => x.id) : [];
+  const faseSubida = s.inicio && s.inicio.fase !== estadoPlan(modo).fase && s.dia === dia();
+  return { dia: s.dia, min: Math.round(s.ms / 60000), n: log.length, ok, pct: log.length ? Math.round(100 * ok / log.length) : 0,
+    ref, porItem, porCat, conf, consolidadasHoy, faseSubida, faseInicio: s.inicio ? s.inicio.fase : null };
+}
+function consejos(modo, st) {
+  const j = JUEGOS[modo], c = [], unidad = { notas: "la nota", acordes: "el acorde", intervalos: "el intervalo" }[modo];
+  if (st.n < 15) c.push("Sesión corta: con más respuestas el informe es más fiable.");
+  const flojos = Object.entries(st.porItem).filter(([, [a, t]]) => t >= 3 && a / t < 0.85).sort((x, y) => x[1][0] / x[1][1] - y[1][0] / y[1][1]);
+  if (flojos.length) {
+    const [id, [a, t]] = flojos[0];
+    c.push(`Lo que más te cuesta: <b>${j.nombre(id)}</b> (${a} de ${t}, ${Math.round(100 * a / t)} %). Dedica un minuto en <b>Escuchar</b> a ${unidad} diciendo su nombre${modo === "notas" ? " y repasa su ancla" : modo === "intervalos" ? " y su canción ancla" : ""}.`);
+  }
+  const pares = Object.entries(st.conf).sort((a, b) => b[1] - a[1]);
+  if (pares.length && pares[0][1] >= 2) {
+    const [x, y] = pares[0][0].split("→"), inverso = st.conf[y + "→" + x] || 0;
+    c.push(`Confusión más repetida: <b>${j.nombre(x)}</b> con <b>${j.nombre(y)}</b> (${pares[0][1] + inverso} veces${inverso ? ", en los dos sentidos" : ""}). En Escuchar ${modo === "notas" ? "tócalas una tras otra y busca qué las diferencia" : "tócalos uno tras otro y busca qué los diferencia"}${modo === "notas" ? " (color, brillo, sensación de tensión o reposo)" : ""}.`);
+  }
+  const cats = Object.entries(st.porCat).filter(([, [, t]]) => t >= 4);
+  if (cats.length > 1) {
+    const peor = cats.sort((a, b) => a[1][0] / a[1][1] - b[1][0] / b[1][1])[0], pp = Math.round(100 * peor[1][0] / peor[1][1]);
+    if (pp <= st.pct - 10) c.push(`Te cuesta más: <b>${textoCat(modo, peor[0]).toLowerCase()}</b> (${pp} % frente al ${st.pct} % general).${modo === "notas" ? " Fíjate en qué nota es, no en lo grave o agudo que suena." : ""}`);
+  }
+  if (st.n && st.ref / st.n > 0.25) c.push(`Usaste el Do de referencia en el ${Math.round(100 * st.ref / st.n)} % de las preguntas (esas no cuentan para el plan). Intenta responder primero sin él.`);
+  if (st.n >= 15 && st.pct >= 90 && !flojos.length) c.push("¡Muy buena sesión! Todo por encima del 85 %. Mañana, en frío, es cuando se consolida.");
+  return c;
+}
+function htmlInforme(modo, st, prev) {
+  const j = JUEGOS[modo];
+  const delta = prev ? st.pct - prev.pct : null;
+  const filas = Object.entries(st.porItem).sort((a, b) => a[1][0] / a[1][1] - b[1][0] / b[1][1]).map(([id, [a, t]]) => {
+    const p = Math.round(100 * a / t);
+    return `<tr><td>${j.nombre(id)}</td><td class="num">${a}/${t}</td><td class="barra-celda"><div class="barra fina ${p < 85 ? "baja" : ""}"><span style="width:${p}%"></span></div></td><td class="num ${p < 85 ? "mal" : ""}">${p} %</td></tr>`;
+  }).join("");
+  const pares = Object.entries(st.conf).sort((a, b) => b[1] - a[1]).slice(0, 4)
+    .map(([k, n]) => { const [x, y] = k.split("→"); return `<li>Sonó <b>${j.nombre(x)}</b> y elegiste <b>${j.nombre(y)}</b>: ${n} ${n > 1 ? "veces" : "vez"}</li>`; }).join("");
+  const cats = Object.entries(st.porCat);
+  const tablaCat = cats.length > 1 ? `<p class="label" style="margin-top:14px">Por ${NOMBRE_CAT[modo]}</p><table class="izq">${cats.sort((a, b) => String(a[0]).localeCompare(String(b[0]))).map(([c, [a, t]]) => `<tr><td>${textoCat(modo, c)}</td><td class="num">${a}/${t}</td><td class="num ${a / t < 0.85 ? "mal" : ""}">${Math.round(100 * a / t)} %</td></tr>`).join("")}</table>` : "";
+  const cons = consejos(modo, st);
+  const fecha = st.dia === dia() ? "Hoy" : st.dia === dia() - 1 ? "Ayer" : new Date(st.dia * 86400000).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
+  return `<div class="informe">
+    <div class="informe-cab">
+      <div><span class="informe-pct">${st.pct} %</span><small>de aciertos</small></div>
+      <div><b>${fecha}</b><small>${st.min} min · ${st.n} respuestas${st.ref ? ` · ${st.ref} con referencia` : ""}</small>
+        ${delta !== null ? `<small class="${delta > 0 ? "sube" : delta < 0 ? "baja" : ""}">${delta === 0 ? "= Igual que" : (delta > 0 ? "▲ " : "▼ ") + Math.abs(delta) + (Math.abs(delta) === 1 ? " punto" : " puntos") + " respecto a"} la sesión anterior (${prev.pct} %)</small>` : ""}</div>
+    </div>
+    ${st.faseSubida ? `<div class="aviso ok">🎉 Hoy has pasado de fase.</div>` : st.consolidadasHoy.length ? `<div class="aviso ok">Hoy has consolidado: ${st.consolidadasHoy.map(j.nombre).join(", ")}</div>` : ""}
+    ${cons.length ? `<p class="label" style="margin-top:14px">Qué mejorar</p><ul class="consejos">${cons.map(x => `<li>${x}</li>`).join("")}</ul>` : ""}
+    <p class="label" style="margin-top:14px">Por ${j.unidad[0]} (de peor a mejor)</p>
+    <table class="izq informe-tabla">${filas}</table>
+    ${pares ? `<p class="label" style="margin-top:14px">Confusiones</p><ul class="consejos">${pares}</ul>` : ""}
+    ${tablaCat}
+  </div>`;
+}
+function pintarInforme() {
+  const modo = estado.modo, s = sesionHoy(modo), arch = leer("oa-informes-" + modo, []);
+  const hoy = s.n && s.log && s.log.length ? estadisticas(modo, s) : null;
+  const prev = arch.filter(x => x.dia < dia()).slice(-1)[0] || null;
+  const caja = $("planInforme");
+  if (!hoy && !prev) { caja.innerHTML = `<h2>Informe de la sesión</h2><p class="apagado">Cuando practiques el plan, aquí verás tus aciertos, qué te cuesta más y qué mejorar.</p>`; return; }
+  const verAnterior = caja.dataset.anterior === "1" || !hoy;
+  const prevDePrev = prev ? arch.filter(x => x.dia < prev.dia).slice(-1)[0] || null : null;
+  caja.innerHTML = `<h2>Informe de la sesión</h2>
+    ${hoy && prev ? `<div class="row" style="margin-bottom:10px"><button class="chip ${verAnterior ? "" : "on"}" data-inf="hoy">Hoy</button><button class="chip ${verAnterior ? "on" : ""}" data-inf="ant">Sesión anterior</button></div>` : ""}
+    ${!hoy ? `<p class="apagado" style="margin-top:0">Hoy aún no has practicado el plan. Esta es tu última sesión:</p>` : ""}
+    ${verAnterior ? htmlInforme(modo, prev, prevDePrev) : htmlInforme(modo, hoy, prev)}`;
+  caja.querySelectorAll("[data-inf]").forEach(b => b.onclick = () => { caja.dataset.anterior = b.dataset.inf === "ant" ? "1" : "0"; pintarInforme(); });
+}
+function verInforme() {
+  $("planInforme").dataset.anterior = "0";
+  verPestana("plan");
+  setTimeout(() => $("planInforme").scrollIntoView({ behavior: "smooth", block: "start" }), 50);
 }
 
 // avance de todo el plan: fases completas + parte de la actual
@@ -1043,6 +1154,7 @@ function pintarPlan() {
     ${aplicados ? "" : `<p class="ayuda">Tus ajustes actuales no son los de esta fase; al pulsar un botón se aplican.</p>`}`;
   $("planPracticar").onclick = () => { libre[modo] = false; guardar("oa-libre", libre); aplicarFase(modo); verPestana("practicar"); };
 
+  pintarInforme();
   const ts = textoSesion(modo);
   $("planSesion").innerHTML = `<p class="label">Duración de la sesión de práctica del plan</p>
     <div class="row" id="chipsDuracion"></div>
@@ -1272,13 +1384,13 @@ function responder(id) {
   // plan: solo con los ajustes de la fase y sin el Do de referencia
   let avance = null, sesionFin = false;
   const fPlan = faseActual(estado.modo);
-  if (!esLibre()) sesionFin = contarSesion(estado.modo);
+  if (!esLibre()) sesionFin = contarSesion(estado.modo, correcta, id);
   if (!esLibre() && ajustesDeFase(estado.modo, fPlan) && !pConReferencia) {
     registrarRespuesta(estado.modo, fPlan, correcta, ok, Math.min(estadoPlan(estado.modo).fase, plan(estado.modo).fases.length - 1));
     avance = comprobarAvance(estado.modo);
   }
   const extra = (det ? `<small>${det}</small>` : "") + (avance ? `<small class="avance">${avance}</small>` : "")
-    + (sesionFin ? `<small class="avance">✓ Has completado la sesión de hoy (${duracion[estado.modo]} min). Puedes seguir si quieres.</small>` : "");
+    + (sesionFin ? `<small class="avance">✓ Has completado la sesión de hoy (${duracion[estado.modo]} min). Puedes seguir si quieres.</small><small><button class="chip mini" data-ver-informe>Ver el informe de la sesión</button></small>` : "");
   if (ok) { j.sel.acierto(id); pEstado(`<b>✓ ${j.nombre(id)}</b>Correcto${extra}`, "ok"); }
   else if (pNota.tipo === "intervalo") {
     // intervalos: qué notas sonaron y cuántos semitonos tiene cada intervalo
@@ -1308,6 +1420,9 @@ function responder(id) {
     if (b) b.onclick = () => tocarContexto(pNota.en, pNota.oct);
   }
   if (!ok && pNota.tipo === "intervalo") { $("pFicha").innerHTML = fichaIntervalo(pNota); $("pFicha").hidden = false; }
+  if (sesionFin && !$("pEstado").querySelector("[data-ver-informe]"))
+    $("pEstado").insertAdjacentHTML("beforeend", `<small class="avance">✓ Has completado la sesión de hoy. <button class="chip mini" data-ver-informe>Ver el informe</button></small>`);
+  $("pEstado").querySelectorAll("[data-ver-informe]").forEach(b => b.onclick = () => verInforme());
   pintarPractica({ correcta, erronea: ok ? null : id });
   $("pRepetir").hidden = true;
   $("pReferencia").hidden = !(estado.modo === "notas" && ajustes.referencia);
@@ -1329,7 +1444,8 @@ $("pSiguiente").onclick = siguiente;
 // botón de pausa (solo en el plan): corta la pregunta en curso y para el cronómetro
 function pausarPlan() {
   ficha++; pararTodo(); pausarPractica();
-  pEstado("⏸ En pausa<small>La pregunta que estaba sonando no cuenta. Pulsa «Continuar» cuando quieras seguir.</small>");
+  pEstado(`⏸ En pausa<small>La pregunta que estaba sonando no cuenta. Pulsa «Continuar» cuando quieras seguir.</small>${sesionHoy(estado.modo).n ? '<small><button class="chip mini" data-ver-informe>Ver el informe de hoy</button></small>' : ""}`);
+  $("pEstado").querySelectorAll("[data-ver-informe]").forEach(b => b.onclick = () => verInforme());
   $("pSiguiente").textContent = "Continuar";
   pintarAvisoPlan();
 }
