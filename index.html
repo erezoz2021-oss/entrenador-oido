@@ -942,7 +942,7 @@ async function borrarConNotas(excluir = []) {
   await tocarEventos(ev, ++fichaSonido);
   return espera((BORRADOR_N * BORRADOR_PASO + 0.45 + 0.6) * 1000);
 }
-// Motivos de Absoluto: tras acertar Re, Fa, Sol o Si suena su motivo (en vez del borrador), siempre en la
+// Motivos de Absoluto: tras fallar con Re, Fa, Sol o Si se puede oír su motivo con un botón, siempre en la
 // octava 4. Duraciones en corcheas (negra = 2) a 90 por minuto.
 const MOTIVO_CORCHEA = 60 / 90 / 2;
 const MOTIVOS = {
@@ -1728,7 +1728,7 @@ function pulsar(id) {
   // en notas sueltas, tras fallar, cualquier tecla suena (en la octava de la nota que sonó)
   if (pComparar && (pComparar.includes(id) || estado.modo !== "intervalos")) tocar(juego().con(pNota, id));
 }
-let pNota = null, pRespondida = true, pElegida = null, pSinBorrador = false;
+let pNota = null, pRespondida = true, pElegida = null;
 function pEstado(html, clase = "") { const e = $("pEstado"); e.innerHTML = html; e.className = "estado " + clase; }
 function pintarPractica(marcas = {}) {
   const habilitadas = pComparar || [];
@@ -1752,9 +1752,8 @@ async function siguiente() {
   ["pRepetir", "pReferencia", "pSiguiente"].forEach(x => $(x).hidden = true);
   const funcional = estado.modo === "grados" || estado.modo === "acordes";
   // en grados y acordes no hay borrador: la cadencia en la tonalidad de la pregunta hace de referencia
-  const sinBorrador = pSinBorrador; pSinBorrador = false;
-  if (ajustes.borrador && !funcional && !sinBorrador) {
-    // el borrador son notas al azar (sin las notas que van a sonar); tras un motivo no hace falta
+  if (ajustes.borrador && !funcional) {
+    // el borrador son notas al azar (sin las notas que van a sonar)
     pEstado("Borrando…");
     await borrarConNotas(clasesDe(pNota));
     if (mia !== ficha) return;
@@ -1815,11 +1814,7 @@ function responder(id) {
       tocar({ ...pNota, cad: false });
     }
   }
-  else if (ok) {
-    j.sel.acierto(id); pEstado(`<b>✓ ${j.nombre(id)}</b>Correcto${extra}`, "ok");
-    // Absoluto: tras acertar una nota con motivo suena el motivo, y hace de borrador
-    if (pNota.tipo === "nota" && MOTIVOS[correcta]) { espera_ok = (tocarMotivo(correcta) + 0.6) * 1000; pSinBorrador = true; }
-  }
+  else if (ok) { j.sel.acierto(id); pEstado(`<b>✓ ${j.nombre(id)}</b>Correcto${extra}`, "ok"); }
   else if (pNota.tipo === "intervalo") {
     // intervalos: qué notas sonaron y cuántos semitonos tiene cada intervalo
     j.sel.fallo(correcta, id);
