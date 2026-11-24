@@ -197,6 +197,21 @@
   .tecl-vis .on { fill: var(--accent); }
   .tecl-vis text { fill: var(--muted); font-size: 6px; font-family: inherit; pointer-events: none; }
   .acorde.grado.vis { box-shadow: 0 0 0 3px var(--accent); }
+  /* dictado */
+  .d-huecos { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 12px 0; }
+  .d-hueco { min-width: 44px; padding: 6px 4px; border: 1.5px dashed var(--line); border-radius: 10px; text-align: center; font-weight: 700; font-size: 1.05rem; line-height: 1.15; }
+  .d-hueco small { display: block; font-weight: 400; font-size: .7rem; color: var(--muted); }
+  .d-hueco.lleno { border-style: solid; border-color: var(--accent); }
+  .d-hueco.actual { border-color: var(--accent); background: var(--accent-soft); }
+  .d-hueco.bien { border: 1.5px solid var(--ok); background: var(--ok-bg); color: var(--ok); }
+  .d-hueco.mal { border: 1.5px solid var(--bad); background: var(--bad-bg); color: var(--bad); }
+  .d-hueco .era { display: block; font-size: .7rem; font-weight: 600; }
+  .niveles-lista { list-style: none; padding: 0; margin: 8px 0 0; }
+  .niveles-lista li { display: flex; gap: 10px; align-items: baseline; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: .9rem; }
+  .niveles-lista li .num { font-weight: 700; color: var(--accent); width: 1.6em; flex: none; }
+  .niveles-lista li .txt { flex: 1; }
+  .niveles-lista li .res { color: var(--muted); font-size: .82rem; white-space: nowrap; }
+  .niveles-lista li.actual { font-weight: 600; }
   .rutina li { margin: 4px 0; }
 </style>
 </head>
@@ -207,17 +222,19 @@
     <button data-modo-btn="grados">Grados</button>
     <button data-modo-btn="acordes">Acordes</button>
     <button data-modo-btn="intervalos">Intervalos</button>
+    <button data-modo-btn="dictado">Dictado</button>
     <button data-modo-btn="notas">Absoluto</button>
   </div>
   <nav class="pestanas" role="tablist">
     <button class="pestana" data-tab="plan">Plan</button>
     <button class="pestana" data-tab="practicar">Practicar</button>
     <button class="pestana" data-tab="cantar" data-modo="grados notas intervalos">Cantar</button>
-    <button class="pestana" data-tab="escuchar">Escuchar</button>
+    <button class="pestana" data-tab="escuchar" data-modo="grados acordes intervalos notas">Escuchar</button>
   </nav>
 
   <p class="sub" data-solo="practicar" data-modo="grados">Suena la cadencia de la tonalidad y después una nota: ¿qué grado es? Al responder, la nota resuelve hacia la tónica.</p>
   <p class="sub" data-solo="practicar" data-modo="notas">Oído absoluto (práctica libre): escucha la nota y elige cuál es.</p>
+  <p class="sub" data-solo="practicar" data-modo="dictado">Suena la cadencia y después una melodía: escribe sus grados en orden y corrige.</p>
   <p class="sub" data-solo="practicar" data-modo="acordes">Suena la cadencia de la tonalidad y después un acorde: ¿qué grado es (I, IV, V…)?</p>
   <p class="sub" data-solo="practicar" data-modo="intervalos">Suenan dos notas: elige qué intervalo forman. Los que falles volverán más adelante.</p>
   <p class="sub" data-solo="cantar" data-modo="grados">Suena la cadencia y la app te pide un grado: cántalo.</p>
@@ -231,7 +248,7 @@
   <div class="rotulo-plan" id="avisoPlan" data-solo="practicar" hidden></div>
 
   <!-- ================= AJUSTES ================= -->
-  <section class="card" id="ajustes" aria-label="Ajustes" data-solo="practicar cantar">
+  <section class="card" id="ajustes" aria-label="Ajustes" data-solo="practicar cantar" data-modo="grados acordes intervalos notas">
     <!-- notas -->
     <div class="bloque fijo-plan" data-modo="notas">
       <p class="label">Notas en juego</p>
@@ -330,7 +347,28 @@
   </section>
 
   <!-- ================= PRACTICAR ================= -->
-  <section class="card stage" data-vista="practicar" aria-live="polite" hidden>
+  <!-- ================= DICTADO ================= -->
+  <section class="card stage" data-vista="practicar" data-modo="dictado" aria-live="polite" hidden>
+    <p class="label">Nivel</p>
+    <div class="row" id="dNiveles"></div>
+    <p class="ayuda izq" id="dNivelTxt" style="margin-top:6px"></p>
+    <div class="estado" id="dEstado">Pulsa «Nuevo dictado» cuando estés listo.</div>
+    <div class="visual" id="dVisual"><div class="pasos"></div><div class="tecl"></div></div>
+    <div class="d-huecos" id="dHuecos"></div>
+    <div id="dBotones"></div>
+    <div class="acciones">
+      <button class="btn primario" id="dNuevo">Nuevo dictado</button>
+      <button class="btn primario" id="dCorregir" hidden>Corregir</button>
+      <button class="btn" id="dBorrar" hidden>⌫ Borrar</button>
+      <button class="btn" id="dRepetir" hidden>Repetir melodía</button>
+      <button class="btn" id="dCadencia" hidden>Repetir cadencia</button>
+      <button class="btn" id="dPrimera" hidden>Dar la 1.ª nota</button>
+    </div>
+    <div id="dResultado" class="izq"></div>
+    <p class="ayuda">Teclado: 1–7 = grado · Retroceso = borrar · Intro = corregir / nuevo dictado · R = repetir la melodía · C = repetir la cadencia</p>
+  </section>
+
+  <section class="card stage" data-vista="practicar" data-modo="grados notas acordes intervalos" aria-live="polite" hidden>
     <div class="estado" id="pEstado">Pulsa «Empezar» cuando estés listo.</div>
     <div class="visual" id="pVisual" data-modo="grados acordes"><div class="pasos"></div><div class="tecl"></div></div>
     <div id="pGrados" data-modo="grados"></div>
@@ -618,7 +656,7 @@ if (estado.vista === "prueba") estado.vista = "plan";   // la pestaña Prueba ya
 // en Practicar: true = práctica libre (ajustes a mano, no cuenta para el plan); false = practicar el plan
 const libre = Object.assign({}, leer("oa-libre", {}));
 // el oído absoluto ("notas") ya no tiene plan: siempre es práctica libre
-const esLibre = () => estado.modo === "notas" || !!libre[estado.modo];
+const esLibre = () => estado.modo === "notas" || estado.modo === "dictado" || !!libre[estado.modo];
 // v3: el programa pasa a oído relativo (grados y acordes por grado); lo anterior de acordes no vale
 if (leer("oa-version", 0) < 3) {
   ["oa-sesion-acordes", "oa-informes-acordes", "oa-progreso-acordes", "oa-pesos-acordes"].forEach(k => { try { localStorage.removeItem(k); } catch {} });
@@ -798,7 +836,7 @@ function limpiarVisual() {
   document.querySelectorAll(".visual .on, .acorde.grado.vis").forEach(e => e.classList.remove("on", "vis"));
 }
 function contVisual() {
-  const el = $({ practicar: "pVisual", escuchar: "eVisual", cantar: "cVisual" }[estado.vista] || "");
+  const el = $(estado.modo === "dictado" && estado.vista === "practicar" ? "dVisual" : { practicar: "pVisual", escuchar: "eVisual", cantar: "cVisual" }[estado.vista] || "");
   return el && el.offsetParent ? el : null;
 }
 // agrupa los eventos por momento, escribe la secuencia y la va iluminando al compás del sonido
@@ -1393,14 +1431,15 @@ function irAFase(modo, i) {
   pintarPlan();
 }
 const listaNombres = (modo, ids) => ids.map(JUEGOS[modo].nombre).join(", ");
-const NOMBRE_MODO = { grados: "Grados", notas: "Absoluto", acordes: "Acordes", intervalos: "Intervalos" };
+const NOMBRE_MODO = { grados: "Grados", notas: "Absoluto", acordes: "Acordes", intervalos: "Intervalos", dictado: "Dictado" };
 const listaTonos = f => (f.tonos || [0]).map(t => nombreTono(t, f.mt || "M")).join(", ") + (f.nueva != null ? ` (más a menudo ${nombreTono(f.nueva, f.mt || "M")})` : "");
 
 function pintarPlan() {
   const modo = estado.modo;
-  const sinPlan = modo === "notas";
+  const sinPlan = modo === "notas" || modo === "dictado";
   ["planInforme", "planRutinaCard", "planFasesCard"].forEach(id => $(id).hidden = sinPlan);
   $("planActual").classList.toggle("fase-actual", !sinPlan);
+  if (modo === "dictado") return pintarPlanDictado();
   if (sinPlan) {
     $("planActual").innerHTML = `<p class="fase-num">Absoluto</p><h2>Oído absoluto: práctica libre</h2>
       <p class="sub" style="margin:0">El programa se centra ahora en el oído relativo (Grados, Acordes e Intervalos). El oído absoluto queda como práctica libre, sin plan: eliges tú las notas, las octavas y el timbre.</p>
@@ -1486,6 +1525,7 @@ function resumenFase(modo, f) {
   return partes.join(" · ");
 }
 function pintarAvisoPlan() {
+  if (estado.modo === "dictado") { $("avisoPlan").hidden = true; return; }
   if (estado.modo === "notas") {
     // Absoluto: sin plan
     $("ajustes").classList.remove("modo-plan"); $("avisoPlan").hidden = false;
@@ -1542,12 +1582,13 @@ function actualizarVisibilidad() {
 }
 function verPestana(cual) {
   if (estado.modo === "acordes" && cual === "cantar") cual = "practicar";
+  if (estado.modo === "dictado" && (cual === "cantar" || cual === "escuchar")) cual = "practicar";
   estado.vista = cual; guardar("oa-vista", cual); ficha++;
   pararTodo(); pararMicro();
   document.querySelectorAll(".pestana").forEach(b => b.classList.toggle("on", b.dataset.tab === cual));
   actualizarVisibilidad();
   $("avisoPlan").hidden = true; $("ajustes").classList.remove("modo-plan", "vacio");
-  ({ plan: pintarPlan, practicar: pausarPractica, cantar: pausarCanto, escuchar: pintarEscuchar,
+  ({ plan: pintarPlan, practicar: estado.modo === "dictado" ? pintarDictado : pausarPractica, cantar: pausarCanto, escuchar: pintarEscuchar,
   })[cual]();
   if (cual === "practicar") pintarAvisoPlan();
 }
@@ -2307,11 +2348,173 @@ function fichaIntervalo(s) {
 
 
 // =====================================================================
+//  DICTADO MELÓDICO (por grados, sin ritmo)
+// =====================================================================
+// Cada nivel: número de notas, grados posibles, salto máximo entre notas (semitonos), tonalidades y modo.
+const NIVELES_DICT = [
+  { n: 3, items: ["1", "3", "5"], salto: 7, tonos: [0], t: "3 notas con 1, 3 y 5" },
+  { n: 3, items: ["1", "2", "3", "4", "5"], salto: 2, tonos: [0], t: "3 notas del 1 al 5, por grados conjuntos" },
+  { n: 4, items: ["1", "2", "3", "4", "5"], salto: 4, tonos: [0], t: "4 notas del 1 al 5, con pasos y terceras" },
+  { n: 4, items: DIATONICOS.M, salto: 2, tonos: [0], t: "4 notas con los 7 grados, por grados conjuntos" },
+  { n: 5, items: DIATONICOS.M, salto: 4, tonos: [0], t: "5 notas con los 7 grados, con terceras" },
+  { n: 6, items: DIATONICOS.M, salto: 7, tonos: [0], t: "6 notas con saltos hasta la 5ª" },
+  { n: 6, items: DIATONICOS.M, salto: 7, tonos: [0, 7, 5], t: "6 notas en Do, Sol y Fa mayor" },
+  { n: 8, items: DIATONICOS.M, salto: 7, tonos: TONOS_ORDEN.M, t: "8 notas en todas las tonalidades mayores" },
+  { n: 8, items: [...DIATONICOS.M, "#4", "b7"], salto: 7, tonos: TONOS_ORDEN.M, t: "8 notas con alteraciones (♯4 y ♭7)" },
+  { n: 6, items: [...DIATONICOS.m, "7"], salto: 7, tonos: [9], mt: "m", t: "6 notas en La menor" },
+  { n: 8, items: [...DIATONICOS.m, "7"], salto: 7, tonos: TONOS_ORDEN.m, mt: "m", t: "8 notas en tonalidades menores" },
+  { n: 12, items: DIATONICOS.M, salto: 12, tonos: TONOS_ORDEN.M, t: "Dictado largo: 12 notas, saltos hasta la octava" },
+];
+const DICT_PASO = 0.8;   // segundos entre notas de la melodía
+let dNivel = Math.min(NIVELES_DICT.length - 1, Math.max(0, leer("oa-dictado-nivel", 0)));
+const dStats = Object.assign({}, leer("oa-dictado", {}));   // { nivel: { d: dictados, ok: notas bien, tot: notas, ult: [ % ] } }
+let dic = null;   // { nivel, tono, mt, base, notas: [{ id, semi }], resp: [], ayuda, fase: "escucha" | "respuesta" | "corregido" }
+const dBotones = BotonesGrado($("dBotones"), id => pulsarDictado(id));
+
+// melodía al azar: empieza en 1, 3 o 5, cada paso dentro del salto máximo, sin repetir nota, y suele acabar en el 1
+function generarMelodia(nv) {
+  const mt = nv.mt || "M", cand = [];
+  for (const id of nv.items) for (const o of [-12, 0, 12]) { const sm = GRADO[id].semi + o; if (sm >= -5 && sm <= 16) cand.push({ id, semi: sm }); }
+  const pesoDe = c => DIATONICOS[mt].includes(c.id) ? 1 : 0.35;   // las alteradas, menos a menudo
+  for (let intento = 0; intento < 200; intento++) {
+    const inicio = cand.filter(c => ["1", "3", "5"].includes(c.id) && c.semi >= 0 && c.semi <= 12);
+    const mel = [azar(inicio.length ? inicio : cand)];
+    let ok = true;
+    for (let i = 1; i < nv.n && ok; i++) {
+      const prev = mel[i - 1], ult = i === nv.n - 1;
+      let op = cand.filter(c => c.semi !== prev.semi && Math.abs(c.semi - prev.semi) <= nv.salto);
+      if (ult && Math.random() < 0.7) { const al1 = op.filter(c => c.id === "1"); if (al1.length) op = al1; }
+      if (!op.length) { ok = false; break; }
+      const total = op.reduce((a, c) => a + pesoDe(c), 0);
+      let r = Math.random() * total;
+      mel.push(op.find(c => (r -= pesoDe(c)) < 0) || op[op.length - 1]);
+    }
+    if (ok) return mel;
+  }
+  return [cand[0]];
+}
+function nuevoDictado() {
+  const nv = NIVELES_DICT[dNivel], tono = azar(nv.tonos), mt = nv.mt || "M";
+  dic = { nivel: dNivel, tono, mt, base: tono <= 5 ? 60 + tono : 48 + tono, notas: generarMelodia(nv), resp: [], ayuda: false, fase: "respuesta" };
+  $("dResultado").innerHTML = "";
+  dEstadoTxt(`Escucha la cadencia de ${nombreTono(tono, mt)} y la melodía de ${dic.notas.length} notas. Después escribe sus grados en orden.`);
+  pintarDictado();
+  tocarDictado(true);
+}
+function tocarDictado(conCadencia) {
+  if (!dic) return;
+  const ev = conCadencia ? eventosCadencia(dic.tono, dic.mt) : [];
+  const t0 = conCadencia ? CAD_FIN : 0, oculto = dic.fase !== "corregido";
+  dic.notas.forEach((nt, i) => ev.push({ midi: dic.base + nt.semi, t: t0 + i * DICT_PASO, dur: DICT_PASO * 0.9, vol: 1, oculto, idBtn: nt.id,
+    lab: `${GRADO[nt.id].et} · ${notaGrado(nt.id, dic.tono, dic.mt)}` }));
+  pararTodo();
+  tocarEventos(ev, ++fichaSonido);
+}
+function dEstadoTxt(html, clase = "") { const e = $("dEstado"); e.innerHTML = html; e.className = "estado " + clase; }
+function pulsarDictado(id) {
+  if (!dic) return;
+  // cada grado que pulsas suena (en la zona de la melodía), como si lo cantaras para comprobarlo
+  const sm = GRADO[id].semi;
+  tocar({ tipo: "grado", id, tono: dic.tono, mt: dic.mt, oct: 4, midi: dic.base + sm, cad: false });
+  if (dic.fase !== "respuesta" || dic.resp.length >= dic.notas.length) return;
+  dic.resp.push(id);
+  pintarDictado();
+}
+function borrarDictado() { if (dic && dic.fase === "respuesta" && dic.resp.length) { dic.resp.pop(); if (!dic.resp.length) dic.ayuda = false; pintarDictado(); } }
+function primeraNota() {
+  if (!dic || dic.fase !== "respuesta") return;
+  dic.resp[0] = dic.notas[0].id; dic.ayuda = true; pintarDictado();
+  tocar({ tipo: "grado", id: dic.notas[0].id, tono: dic.tono, mt: dic.mt, oct: 4, midi: dic.base + dic.notas[0].semi, cad: false });
+}
+function corregirDictado() {
+  if (!dic || dic.fase !== "respuesta" || dic.resp.length < dic.notas.length) return;
+  dic.fase = "corregido";
+  const bien = dic.notas.filter((nt, i) => nt.id === dic.resp[i]).length, tot = dic.notas.length, pct = Math.round(100 * bien / tot);
+  // la nota dada como ayuda no cuenta
+  const cuentan = dic.ayuda ? tot - 1 : tot, bienC = dic.ayuda ? bien - 1 : bien;
+  const st = dStats[dic.nivel] || { d: 0, ok: 0, tot: 0, ult: [] };
+  st.d++; st.ok += bienC; st.tot += cuentan; st.ult = [...st.ult, cuentan ? Math.round(100 * bienC / cuentan) : 0].slice(-10);
+  dStats[dic.nivel] = st; guardar("oa-dictado", dStats);
+  const nombres = arr => arr.map(id => `${GRADO[id].et} ${notaGrado(id, dic.tono, dic.mt)}`).join(" · ");
+  dEstadoTxt(`<b>${bien === tot ? "✓ ¡Perfecto!" : `${bien} de ${tot} notas`}</b>${pct} % · ${nombreTono(dic.tono, dic.mt)}${dic.ayuda ? "<small>La 1.ª nota te la di yo: no cuenta en tus resultados.</small>" : ""}`, bien === tot ? "ok" : bien >= tot / 2 ? "" : "bad");
+  $("dResultado").innerHTML = `<div class="ficha-nota">
+      <p><b>Sonó:</b> ${nombres(dic.notas.map(n => n.id))}</p>
+      ${bien < tot ? `<p><b>Escribiste:</b> ${nombres(dic.resp)}</p>` : ""}
+      <p class="apagado" style="margin-bottom:0">La melodía vuelve a sonar con sus notas iluminadas. Toca cualquier grado para oírlo en esta tonalidad.</p>
+    </div>`;
+  pintarDictado();
+  tocarDictado(false);
+}
+const textoStats = i => { const st = dStats[i]; if (!st || !st.d) return "sin practicar"; const media = st.ult.length ? Math.round(st.ult.reduce((a, b) => a + b, 0) / st.ult.length) : 0; return `${st.d} dictado${st.d > 1 ? "s" : ""} · últimos: ${media} %`; };
+function elegirNivel(i) {
+  dNivel = i; guardar("oa-dictado-nivel", i);
+  ficha++; pararTodo(); dic = null;
+  $("dResultado").innerHTML = "";
+  dEstadoTxt("Pulsa «Nuevo dictado» cuando estés listo.");
+  pintarDictado();
+}
+function pintarDictado() {
+  const nv = NIVELES_DICT[dNivel];
+  chips($("dNiveles"), NIVELES_DICT.map((x, i) => [i, String(i + 1), x.t]), v => v === dNivel, v => elegirNivel(v));
+  $("dNivelTxt").innerHTML = `<b>Nivel ${dNivel + 1}:</b> ${nv.t} · ${nv.tonos.map(t => nombreTono(t, nv.mt || "M")).join(", ")} · ${textoStats(dNivel)}`;
+  const tono = dic ? dic.tono : nv.tonos[0], mt = dic ? dic.mt : nv.mt || "M";
+  const ids = GRADOS.filter(g => DIATONICOS[mt].includes(g.id) || nv.items.includes(g.id)).map(g => g.id);
+  dBotones.pintar({ items: ids.map(id => ({ id, top: GRADO[id].et, sub: notaGrado(id, tono, mt) })), activas: nv.items, habilitado: !!dic,
+    libres: !!dic && dic.fase === "corregido" });
+  // huecos: uno por nota; tras corregir, verde o rojo con la correcta
+  if (!dic) { $("dHuecos").innerHTML = ""; }
+  else $("dHuecos").innerHTML = dic.notas.map((nt, i) => {
+    const r = dic.resp[i];
+    if (dic.fase === "corregido") {
+      const ok = r === nt.id;
+      return `<span class="d-hueco ${ok ? "bien" : "mal"}">${GRADO[r].et}<small>${notaGrado(r, dic.tono, dic.mt)}</small>${ok ? "" : `<span class="era">era ${GRADO[nt.id].et}</span>`}</span>`;
+    }
+    return `<span class="d-hueco${r ? " lleno" : ""}${i === dic.resp.length ? " actual" : ""}">${r ? GRADO[r].et : "&nbsp;"}<small>${r ? notaGrado(r, dic.tono, dic.mt) : i + 1}</small></span>`;
+  }).join("");
+  const enRespuesta = !!dic && dic.fase === "respuesta";
+  $("dNuevo").hidden = enRespuesta && dic.resp.length < dic.notas.length;
+  $("dNuevo").textContent = dic ? "Nuevo dictado" : "Empezar";
+  $("dCorregir").hidden = !(enRespuesta && dic.resp.length === dic.notas.length);
+  $("dBorrar").hidden = !(enRespuesta && dic.resp.length);
+  $("dRepetir").hidden = !dic;
+  $("dCadencia").hidden = !dic;
+  $("dPrimera").hidden = !(enRespuesta && !dic.resp.length);
+}
+$("dNuevo").onclick = nuevoDictado;
+$("dCorregir").onclick = corregirDictado;
+$("dBorrar").onclick = borrarDictado;
+$("dRepetir").onclick = () => tocarDictado(false);
+$("dCadencia").onclick = () => dic && tocar({ tipo: "grado", id: "1", tono: dic.tono, mt: dic.mt, oct: 4, midi: dic.base, soloCad: true });
+$("dPrimera").onclick = primeraNota;
+function teclaDictado(e, k) {
+  const nv = NIVELES_DICT[dNivel];
+  if (k >= "1" && k <= "7") {
+    const id = nv.items.includes(k) ? k : nv.items.find(x => GRADO[x].num === +k);
+    if (id) pulsarDictado(id);
+  } else if (k === "backspace") { e.preventDefault(); borrarDictado(); }
+  else if (k === "enter" || k === " ") { e.preventDefault(); if (!$("dCorregir").hidden) corregirDictado(); else if (!$("dNuevo").hidden) nuevoDictado(); }
+  else if (k === "r") tocarDictado(false);
+  else if (k === "c") $("dCadencia").onclick();
+}
+// pestaña Plan del dictado: los niveles y tus resultados
+function pintarPlanDictado() {
+  $("planActual").innerHTML = `<p class="fase-num">Dictado</p><h2>Dictado melódico</h2>
+    <p class="sub" style="margin:0">Suena la cadencia de la tonalidad y después una melodía. Escribe los grados en orden (1 / Do, 2 / Re…) y corrige. Es lo mismo que haces en Grados, pero con varias notas seguidas: así se hace un dictado. El ritmo no se escribe, solo las alturas.</p>
+    <p class="sub" style="margin:8px 0 0">Elige el nivel que quieras. Consejo: sube de nivel cuando aciertes más del 85 % de forma habitual.</p>
+    <ul class="niveles-lista">${NIVELES_DICT.map((x, i) => `<li class="${i === dNivel ? "actual" : ""}"><span class="num">${i + 1}</span>
+      <span class="txt">${x.t}<br><span class="apagado" style="font-size:.8rem">${x.tonos.map(t => nombreTono(t, x.mt || "M")).join(", ")}</span></span>
+      <span class="res">${textoStats(i)}</span><button class="chip mini" data-nivel="${i}">Practicar</button></li>`).join("")}</ul>`;
+  $("planActual").querySelectorAll("[data-nivel]").forEach(b => b.onclick = () => { elegirNivel(+b.dataset.nivel); verPestana("practicar"); });
+}
+
+// =====================================================================
 //  TECLADO FÍSICO
 // =====================================================================
 document.addEventListener("keydown", e => {
   if (e.target.tagName === "INPUT" || e.ctrlKey || e.metaKey || e.altKey) return;
-  const k = e.key.toLowerCase(), j = juego(), id = j.pistaTecla(k);
+  const k = e.key.toLowerCase();
+  if (estado.modo === "dictado") { if (estado.vista === "practicar") teclaDictado(e, k); return; }
+  const j = juego(), id = j.pistaTecla(k);
   if (estado.vista === "practicar") {
     if (id && j.activos().includes(id)) pulsar(id);   // antes de responder, responde; tras fallar, compara
     else if (k === " " || k === "enter") { e.preventDefault(); if (!$("pSiguiente").hidden) siguiente(); }
