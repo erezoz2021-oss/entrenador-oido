@@ -656,8 +656,9 @@ class Selector {
     let posibles = activas.filter(k => !(k === u1 && (activas.length >= 4 || k === u2)));
     if (!posibles.length) posibles = activas.slice();
     // casi nunca la vecina de la anterior (la nota o el acorde de al lado se reconoce sin esfuerzo);
-    // "casi": si no saliera nunca, eso también sería una pista
-    if (evitar && Math.random() < 0.8) { const sinVecinas = posibles.filter(k => !evitar(k)); if (sinVecinas.length) posibles = sinVecinas; }
+    // "casi": si no saliera nunca, eso también sería una pista. Solo si quedan al menos 2 no vecinas:
+    // con una sola, siempre saldría esa ("después del 2 viene el 5") y sería otra pista
+    if (evitar && Math.random() < 0.8) { const sinVecinas = posibles.filter(k => !evitar(k)); if (sinVecinas.length >= 2) posibles = sinVecinas; }
     // ninguna se queda mucho tiempo sin salir
     const limite = 2 * activas.length + 1;
     const olvidadas = posibles.filter(k => this.ronda - this.visto[k] >= limite).sort((a, b) => this.visto[a] - this.visto[b]);
@@ -965,7 +966,8 @@ const JUEGOS = {
     idDe: s => s.id,
     detalle: () => "",
     vecino: (a, b) => a !== b && distCirc(GRADO[a].semi, GRADO[b].semi) <= 2,
-    pistaTecla: k => ajustesGr.activos.includes(k) ? k : null,
+    // tecla numérica = grado con ese número (también ♭3, ♭6, ♭7… si son los que están en juego)
+    pistaTecla: k => ajustesGr.activos.includes(k) ? k : (k >= "1" && k <= "7" ? ajustesGr.activos.find(id => GRADO[id].num === +k) || null : null),
     unidad: ["grado", "grados"],
   },
   notas: {
