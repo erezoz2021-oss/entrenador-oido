@@ -123,6 +123,7 @@
   .rotulo-plan.libre { background: var(--chip-off); }
   .rotulo-plan.libre .etq { color: var(--muted); }
   #ajustes.modo-plan .fijo-plan { display: none; }
+  #ajustes.vacio { display: none; }
   .estado small.avance { font-weight: 600; color: var(--accent); }
   .correcta { background: var(--ok-bg) !important; border-color: var(--ok) !important; color: var(--ok) !important; opacity: 1 !important; }
   .erronea { background: var(--bad-bg) !important; border-color: var(--bad) !important; color: var(--bad) !important; opacity: 1 !important; }
@@ -179,31 +180,39 @@
   .anclas tr { cursor: pointer; }
   .anclas td.oir { width: 1%; white-space: nowrap; }
   .rutina { margin: 6px 0 0; padding-left: 1.2em; font-size: .92rem; }
+  .acorde.grado { display: flex; flex-direction: column; align-items: center; gap: 1px; line-height: 1.15; }
+  .acorde.grado b { font-size: 1.15rem; }
+  .acorde.grado small { font-size: .72rem; opacity: .8; font-weight: 400; }
+  .acorde.apagada { opacity: .3; }
   .rutina li { margin: 4px 0; }
 </style>
 </head>
 <body>
 <main>
-  <h1>Entrenador de oído absoluto</h1>
+  <h1>Entrenador de oído</h1>
   <div class="segmento" role="tablist" aria-label="Qué practicar">
-    <button data-modo-btn="notas">Notas sueltas</button>
+    <button data-modo-btn="grados">Grados</button>
     <button data-modo-btn="acordes">Acordes</button>
     <button data-modo-btn="intervalos">Intervalos</button>
+    <button data-modo-btn="notas">Absoluto</button>
   </div>
   <nav class="pestanas" role="tablist">
     <button class="pestana" data-tab="plan">Plan</button>
     <button class="pestana" data-tab="practicar">Practicar</button>
-    <button class="pestana" data-tab="cantar" data-modo="notas intervalos">Cantar</button>
+    <button class="pestana" data-tab="cantar" data-modo="grados notas intervalos">Cantar</button>
     <button class="pestana" data-tab="escuchar">Escuchar</button>
   </nav>
 
-  <p class="sub" data-solo="practicar" data-modo="notas">Escucha la nota y elige cuál es. Las que falles volverán más adelante.</p>
-  <p class="sub" data-solo="practicar" data-modo="acordes">Escucha el acorde y elige cuál es. Los que falles volverán más adelante.</p>
+  <p class="sub" data-solo="practicar" data-modo="grados">Suena la cadencia de la tonalidad y después una nota: ¿qué grado es? Al responder, la nota resuelve hacia la tónica.</p>
+  <p class="sub" data-solo="practicar" data-modo="notas">Oído absoluto (práctica libre): escucha la nota y elige cuál es.</p>
+  <p class="sub" data-solo="practicar" data-modo="acordes">Suena la cadencia de la tonalidad y después un acorde: ¿qué grado es (I, IV, V…)?</p>
   <p class="sub" data-solo="practicar" data-modo="intervalos">Suenan dos notas: elige qué intervalo forman. Los que falles volverán más adelante.</p>
+  <p class="sub" data-solo="cantar" data-modo="grados">Suena la cadencia y la app te pide un grado: cántalo.</p>
   <p class="sub" data-solo="cantar" data-modo="notas">La app te dice una nota y tú la cantas sin oírla antes.</p>
   <p class="sub" data-solo="cantar" data-modo="intervalos">La app toca una nota y tú cantas el intervalo que te pide a partir de ella.</p>
   <p class="sub" data-solo="escuchar" data-modo="notas">Escucha cada nota en todas las octavas del piano, de grave a agudo.</p>
-  <p class="sub" data-solo="escuchar" data-modo="acordes">Toca un acorde para escucharlo.</p>
+  <p class="sub" data-solo="escuchar" data-modo="grados">Elige la tonalidad, pon la cadencia y escucha cada grado con su resolución.</p>
+  <p class="sub" data-solo="escuchar" data-modo="acordes">Elige la tonalidad y escucha los acordes de cada grado.</p>
   <p class="sub" data-solo="escuchar" data-modo="intervalos">Toca un intervalo para escucharlo desde Do4.</p>
 
   <div class="rotulo-plan" id="avisoPlan" data-solo="practicar" hidden></div>
@@ -236,10 +245,25 @@
         </span>
       </label>
     </div>
+    <!-- grados -->
+    <div class="bloque fijo-plan" data-modo="grados">
+      <p class="label">Grados en juego</p>
+      <div class="row" id="chipsGrados"></div>
+    </div>
+    <div class="bloque fijo-plan" data-modo="grados acordes">
+      <p class="label">Modo</p>
+      <div class="row" id="chipsModoTono"></div>
+      <p class="label" style="margin-top:10px">Tonalidades</p>
+      <div class="row" id="chipsTonos"></div>
+    </div>
+    <div class="bloque fijo-plan" data-modo="grados" data-solo="practicar">
+      <p class="label">Octava</p>
+      <div class="row" id="chipsOctavaGr"></div>
+    </div>
     <!-- acordes -->
     <div class="bloque fijo-plan" data-modo="acordes">
       <p class="label">Acordes en juego</p>
-      <div id="chipsAcordes"></div>
+      <div class="row" id="chipsAcordes"></div>
     </div>
     <div class="bloque fijo-plan" data-modo="acordes" data-solo="practicar">
       <p class="label">Posición</p>
@@ -265,7 +289,7 @@
       <p class="ayuda" style="text-align:left;margin-top:6px" id="vozAyuda"></p>
     </div>
     <!-- común -->
-    <div class="bloque" data-solo="practicar cantar">
+    <div class="bloque" data-solo="practicar cantar" data-modo="notas intervalos">
       <label class="switch">
         <input type="checkbox" id="borrador" checked>
         <span>Borrar el sonido anterior
@@ -279,12 +303,12 @@
   <section data-vista="plan" hidden>
     <div class="card fase-actual" id="planActual"></div>
     <div class="card" id="planInforme"></div>
-    <div class="card">
+    <div class="card" id="planRutinaCard">
       <h2>Rutina diaria</h2>
       <div id="planSesion"></div>
       <ol class="rutina" id="planRutina"></ol>
     </div>
-    <div class="card">
+    <div class="card" id="planFasesCard">
       <details id="planDetalles">
         <summary>Todas las fases</summary>
         <ul class="lista-fases" id="planLista"></ul>
@@ -295,6 +319,7 @@
   <!-- ================= PRACTICAR ================= -->
   <section class="card stage" data-vista="practicar" aria-live="polite" hidden>
     <div class="estado" id="pEstado">Pulsa «Empezar» cuando estés listo.</div>
+    <div id="pGrados" data-modo="grados"></div>
     <div id="pTeclado" data-modo="notas"></div>
     <div id="pAcordes" data-modo="acordes"></div>
     <div id="pIntervalos" data-modo="intervalos"></div>
@@ -305,7 +330,9 @@
     </div>
     <div id="pFicha" class="izq" hidden></div>
     <p class="ayuda" data-modo="notas">Teclado: A W S E D F T G Y H U J (como un piano) o 1–7 · Espacio = siguiente · R = repetir · Q = Do de referencia</p>
-    <p class="ayuda" data-modo="acordes intervalos">Teclado: 1–9 para responder (en el orden de los botones) · Espacio = siguiente · R = repetir</p>
+    <p class="ayuda" data-modo="grados">Teclado: 1–7 = grado · Espacio = siguiente · R = repetir la nota · C = repetir la cadencia</p>
+    <p class="ayuda" data-modo="acordes">Teclado: 1–7 para responder (en el orden de los botones) · Espacio = siguiente · R = repetir el acorde · C = repetir la cadencia</p>
+    <p class="ayuda" data-modo="intervalos">Teclado: 1–9 para responder (en el orden de los botones) · Espacio = siguiente · R = repetir</p>
   </section>
 
   <!-- ================= CANTAR ================= -->
@@ -319,6 +346,7 @@
       <button class="btn" id="cOirTuya" hidden>Oír lo que cantaste</button>
       <button class="btn" id="cReferencia" hidden>Do de referencia</button>
     </div>
+    <p class="ayuda" data-modo="grados">Escucha la cadencia, piensa el grado que te pide y cántalo; mantenlo un segundo. Da igual la octava. Con «Repetir cadencia» vuelves a oír la tonalidad.</p>
     <p class="ayuda" data-modo="notas">Canta la nota en la octava que te resulte cómoda y mantenla un segundo. Da igual la octava. Si te cuesta encontrarla, usa el «Do de referencia»: suena en tu registro y desde él puedes llegar a la nota.</p>
     <p class="ayuda" data-modo="intervalos">Escucha la nota de partida, canta la nota que forma el intervalo y mantenla un segundo. Si te resulta más cómodo, puedes cantarla una octava más grave o más aguda.</p>
   </section>
@@ -331,8 +359,18 @@
       <div class="row" id="eOctavas" style="justify-content:center;min-height:34px"></div>
       <p class="ayuda">Octavas 3, 4 y 5: prioridad alta · 2 y 6 (borde discontinuo): prioridad media</p>
     </div>
+    <div data-modo="grados acordes">
+      <p class="label">Tonalidad</p>
+      <div class="row" id="eModos"></div>
+      <div class="row" id="eTonos" style="margin-top:6px"></div>
+      <div class="acciones" style="justify-content:flex-start"><button class="btn peque" id="eCadencia">▶ Cadencia</button></div>
+    </div>
+    <div data-modo="grados">
+      <div id="eGrados"></div>
+      <div class="estado izq" id="eEstadoGr" style="margin-top:14px">Toca un grado para oírlo con su resolución.</div>
+    </div>
     <div data-modo="acordes">
-      <div id="eAcordes"></div>
+      <div id="eAcGrados"></div>
       <div class="estado" id="eEstadoAc" style="margin-top:14px">Toca un acorde para escucharlo.</div>
     </div>
     <div data-modo="intervalos">
@@ -451,6 +489,113 @@ const ANCLAS_INT_SUGERIDAS = {
   "5J": { asc: "Star Wars (tema principal)" }, "6M": { asc: "My Bonnie" }, "8J": { asc: "Over the Rainbow" },
 };
 
+// ----- tonalidades y grados (oído relativo) -----
+const LETRAS = ["Do", "Re", "Mi", "Fa", "Sol", "La", "Si"], PC_LETRA = [0, 2, 4, 5, 7, 9, 11];
+// letra de la tónica de cada tonalidad (para escribir bien ♯ y ♭)
+const LETRA_TONICA = {
+  M: { 0: 0, 7: 4, 5: 3, 2: 1, 10: 6, 9: 5, 3: 2, 4: 2, 11: 6, 6: 3, 1: 1, 8: 5 },
+  m: { 9: 5, 4: 2, 2: 1, 11: 6, 7: 4, 6: 3, 0: 0, 1: 0, 5: 3, 10: 6, 3: 2, 8: 4 },
+};
+// tonalidades por orden de uso
+const TONOS_ORDEN = { M: [0, 7, 5, 2, 10, 9, 3, 4], m: [9, 4, 2, 11, 7, 6, 0, 1] };
+const ALTER = { 0: "", 1: "♯", "-1": "♭", 2: "𝄪", "-2": "𝄫" };
+// nombre de la nota de clase pc escrita con la letra (tónica + desplazamiento)
+function deletrearEn(tono, mt, desp, pc) {
+  const L = (LETRA_TONICA[mt][tono] + desp) % 7, d = ((pc - PC_LETRA[L]) % 12 + 18) % 12 - 6;
+  return LETRAS[L] + (ALTER[d] ?? "");
+}
+const nombreTono = (tono, mt = "M") => deletrearEn(tono, mt, 0, tono) + (mt === "M" ? " mayor" : " menor");
+const GRADOS = [
+  { id: "1", semi: 0, num: 1, et: "1" }, { id: "b2", semi: 1, num: 2, et: "♭2" }, { id: "2", semi: 2, num: 2, et: "2" },
+  { id: "b3", semi: 3, num: 3, et: "♭3" }, { id: "3", semi: 4, num: 3, et: "3" }, { id: "4", semi: 5, num: 4, et: "4" },
+  { id: "#4", semi: 6, num: 4, et: "♯4" }, { id: "5", semi: 7, num: 5, et: "5" }, { id: "b6", semi: 8, num: 6, et: "♭6" },
+  { id: "6", semi: 9, num: 6, et: "6" }, { id: "b7", semi: 10, num: 7, et: "♭7" }, { id: "7", semi: 11, num: 7, et: "7" },
+];
+const GRADO = Object.fromEntries(GRADOS.map(g => [g.id, g]));
+const GR_IDS = GRADOS.map(g => g.id);
+const ESCALA = { M: [0, 2, 4, 5, 7, 9, 11], m: [0, 2, 3, 5, 7, 8, 10] };
+const DIATONICOS = { M: ["1", "2", "3", "4", "5", "6", "7"], m: ["1", "2", "b3", "4", "5", "b6", "b7"] };
+const etqGrado = id => GRADO[id] ? GRADO[id].et : id;
+const etqSemi = semi => semi % 12 === 0 ? "1" : GRADOS.find(g => g.semi === semi % 12).et;
+const notaGrado = (id, tono, mt) => deletrearEn(tono, mt, GRADO[id].num - 1, (tono + GRADO[id].semi) % 12);
+// camino de resolución hacia la tónica más cercana (semitonos desde la tónica; 12 = la tónica de arriba)
+function caminoResolucion(semi, mt) {
+  const esc = ESCALA[mt], camino = [semi];
+  if (semi === 0) return camino;
+  let actual = semi;
+  if (!esc.includes(actual)) {
+    // nota alterada: va a la vecina de la escala y sigue en esa dirección hasta una nota estable (1, 3 o 5)
+    const estables = [0, mt === "M" ? 4 : 3, 7, 12], dir = actual === 11 || actual === 6 ? 1 : -1;
+    do { actual += dir; if (esc.includes(actual % 12) || actual === 12) camino.push(actual); } while (!estables.includes(actual));
+    return camino;
+  }
+  let i = esc.indexOf(actual);
+  if (i <= 3) while (i > 0) camino.push(esc[--i]);
+  else { while (i < esc.length - 1) camino.push(esc[++i]); camino.push(12); }
+  return camino;
+}
+// sensación de cada grado (respecto a la tónica)
+const FUNCION_GRADO = {
+  0: ["reposo total", "Es la tónica: la casa. Suena a final, nada pide moverse."],
+  1: ["tensión fuerte (cromática)", "Fuera de la escala, roza la tónica: oscura y chirriante."],
+  2: ["tensión suave", "Suena «de paso», a frase sin terminar."],
+  3: ["color menor", "Dentro de una tonalidad mayor suena triste o «blues»."],
+  4: ["reposo luminoso", "La 3ª del acorde de tónica: estable y brillante, da el color mayor."],
+  5: ["tensión", "Queda suspendida y pesa hacia abajo, hacia el 3."],
+  6: ["tensión muy fuerte (cromática)", "El tritono de la tónica, lo más lejano: inquieta y empuja hacia el 5."],
+  7: ["reposo abierto", "La 5ª del acorde de tónica: estable, firme y hueca, menos final que el 1."],
+  8: ["tensión oscura (cromática)", "Dramática y melancólica; tiende a caer al 5."],
+  9: ["tensión suave", "Suena a suspiro, algo nostálgica."],
+  10: ["tensión relajada (cromática)", "Color «blues» o de rock; tiende a bajar al 6."],
+  11: ["tensión máxima", "La sensible: medio tono por debajo de la tónica, casi obliga a subir a ella."],
+};
+const FUNCION_MENOR = {
+  3: ["reposo con color triste", "La 3ª menor del acorde de tónica: estable, da el color menor."],
+  4: ["color mayor (cromática)", "En una tonalidad menor ilumina de golpe: rompe el color menor."],
+  8: ["tensión melancólica", "La 6ª menor: oscura, pesa hacia el 5."],
+  9: ["color dórico (cromática)", "La 6ª mayor dentro de menor: más luminosa, menos triste."],
+  10: ["tensión suave", "La 7ª natural del menor: suave, sin la urgencia de la sensible."],
+  11: ["tensión máxima", "La sensible de la menor armónica: obliga a subir a la tónica."],
+};
+const funcionGrado = (semi, mt) => (mt === "m" && FUNCION_MENOR[semi]) || FUNCION_GRADO[semi];
+
+// acordes de cada grado
+const TIPO_INT = { M: [0, 4, 7], m: [0, 3, 7], d: [0, 3, 6] };
+const SUF = { M: "", m: "m", d: "°" };
+const GRADOS_AC = {
+  M: [{ id: "I", semi: 0, t: "M", num: 1 }, { id: "ii", semi: 2, t: "m", num: 2 }, { id: "iii", semi: 4, t: "m", num: 3 },
+      { id: "IV", semi: 5, t: "M", num: 4 }, { id: "V", semi: 7, t: "M", num: 5 }, { id: "vi", semi: 9, t: "m", num: 6 }, { id: "vii°", semi: 11, t: "d", num: 7 }],
+  m: [{ id: "i", semi: 0, t: "m", num: 1 }, { id: "ii°", semi: 2, t: "d", num: 2 }, { id: "III", semi: 3, t: "M", num: 3 },
+      { id: "iv", semi: 5, t: "m", num: 4 }, { id: "V", semi: 7, t: "M", num: 5 }, { id: "VI", semi: 8, t: "M", num: 6 }, { id: "VII", semi: 10, t: "M", num: 7 }],
+};
+const acGrado = (id, mt) => GRADOS_AC[mt].find(a => a.id === id);
+const nombreAcGrado = (id, tono, mt) => { const a = acGrado(id, mt); return a ? deletrearEn(tono, mt, a.num - 1, (tono + a.semi) % 12) + SUF[a.t] : id; };
+// notas (midi) del acorde de un grado: raíz en la octava "oct", inversión 0/1/2
+function midisAcGrado({ id, tono, mt, oct, inv = 0 }) {
+  const a = acGrado(id, mt), base = 12 * (oct + 1) + (tono + a.semi) % 12;
+  const m = TIPO_INT[a.t].map(i => base + i);
+  for (let k = 0; k < inv; k++) m.push(m.shift() + 12);
+  return m;
+}
+const notasAcGradoTxt = s => { const a = acGrado(s.id, s.mt); return midisAcGrado(s).map((m, k) => {
+  const pos = TIPO_INT[a.t].indexOf(((m - (12 * (s.oct + 1) + (s.tono + a.semi) % 12)) % 12 + 12) % 12);
+  return deletrearEn(s.tono, s.mt, a.num - 1 + [0, 2, 4][pos], ((m % 12) + 12) % 12);
+}).join(" – "); };
+// cadencia I–IV–V–I (o i–iv–V–i) en la tonalidad: bajo entre Sol2 y Fa♯3, acordes entre Si♭3 y La4
+const CAD_PASO = 0.7, CAD_FIN = 3.35;
+function eventosCadencia(tono, mt) {
+  const tonica = mt === "M" ? "M" : "m";
+  const acs = [[0, tonica], [5, mt === "M" ? "M" : "m"], [7, "M"], [0, tonica]];
+  const enRango = (pc, lo) => lo + ((pc - lo) % 12 + 12) % 12;
+  const ev = [];
+  acs.forEach(([raiz, t], k) => {
+    const dur = k === 3 ? 1.0 : 0.62, pcR = (tono + raiz) % 12;
+    ev.push({ midi: enRango(pcR, 43), t: k * CAD_PASO, dur });
+    TIPO_INT[t].forEach(i => ev.push({ midi: enRango((pcR + i) % 12, 58), t: k * CAD_PASO, dur }));
+  });
+  return ev;
+}
+
 // =====================================================================
 //  ALMACENAMIENTO
 // =====================================================================
@@ -462,9 +607,15 @@ const ajustes = Object.assign({ activas: NATURALES.slice(), octava: "libre", bor
 ajustes.activas = TODAS.filter(k => ajustes.activas.includes(k));
 if (typeof ajustes.octava === "number" && !OCTAVAS.includes(ajustes.octava)) ajustes.octava = "libre";   // ya no se usan la 1 ni la 7
 if (ajustes.activas.length < 2) ajustes.activas = NATURALES.slice();
-const ajustesAc = Object.assign({ activos: ["C", "F", "G"], posicion: "fundamental", octava: 4 }, leer("oa-ajustes-acordes", {}));
-ajustesAc.activos = ACORDES.map(a => a.id).filter(k => ajustesAc.activos.includes(k));
-if (ajustesAc.activos.length < 2) ajustesAc.activos = ["C", "F", "G"];
+const ajustesGr = Object.assign({ activos: ["1", "3", "5"], octava: 4, tonos: [0], mt: "M", nueva: null }, leer("oa-ajustes-grados", {}));
+ajustesGr.activos = GR_IDS.filter(k => ajustesGr.activos.includes(k));
+if (ajustesGr.activos.length < 2) ajustesGr.activos = ["1", "3", "5"];
+const ajustesAc = Object.assign({ activos: ["I", "IV", "V"], posicion: "fundamental", octava: 4, tonos: [0], mt: "M", nueva: null }, leer("oa-ajustes-acordes", {}));
+if (!ajustesAc.tonos || !GRADOS_AC[ajustesAc.mt]) Object.assign(ajustesAc, { tonos: [0], mt: "M", nueva: null });
+ajustesAc.activos = GRADOS_AC[ajustesAc.mt].map(a => a.id).filter(k => ajustesAc.activos.includes(k));
+if (ajustesAc.activos.length < 2) ajustesAc.activos = ajustesAc.mt === "M" ? ["I", "IV", "V"] : ["i", "iv", "V"];
+// tonalidad de cada pregunta: en las fases que añaden una tonalidad nueva, sale más a menudo (60 %)
+const elegirTono = a => a.nueva != null && a.tonos.length > 1 && Math.random() < 0.6 ? a.nueva : azar(a.tonos);
 const ajustesIn = Object.assign({ activos: ["4J", "5J", "8J"], direccion: "asc" }, leer("oa-ajustes-intervalos", {}));
 ajustesIn.activos = TODOS_INT.filter(k => ajustesIn.activos.includes(k));
 if (ajustesIn.activos.length < 2) ajustesIn.activos = ["4J", "5J", "8J"];
@@ -472,7 +623,15 @@ const estado = { modo: leer("oa-modo", "notas"), vista: leer("oa-vista", "plan")
 if (estado.vista === "prueba") estado.vista = "plan";   // la pestaña Prueba ya no existe
 // en Practicar: true = práctica libre (ajustes a mano, no cuenta para el plan); false = practicar el plan
 const libre = Object.assign({}, leer("oa-libre", {}));
-const esLibre = () => !!libre[estado.modo];
+// el oído absoluto ("notas") ya no tiene plan: siempre es práctica libre
+const esLibre = () => estado.modo === "notas" || !!libre[estado.modo];
+// v3: el programa pasa a oído relativo (grados y acordes por grado); lo anterior de acordes no vale
+if (leer("oa-version", 0) < 3) {
+  ["oa-sesion-acordes", "oa-informes-acordes", "oa-progreso-acordes", "oa-pesos-acordes"].forEach(k => { try { localStorage.removeItem(k); } catch {} });
+  if (estado.modo === "notas") { estado.modo = "grados"; guardar("oa-modo", "grados"); }
+  libre.grados = false; libre.acordes = false; guardar("oa-libre", libre);
+  guardar("oa-version", 3);
+}
 function ponerLibre(v) {
   libre[estado.modo] = v; guardar("oa-libre", libre);
   if (!v) aplicarFase(estado.modo);
@@ -489,13 +648,16 @@ const esperaPara = n => n <= 3 ? [1, 2] : n <= 5 ? [2, 3] : n <= 8 ? [3, 5] : [4
 class Selector {
   constructor(clave) { this.clave = clave; this.pesos = leer(clave, {}); this.bloqueo = {}; this.ronda = 0; this.ultimas = []; this.visto = {}; this.n = 12; }
   peso(k) { return Math.min(PESO_MAX, this.pesos[k] ?? 1); }
-  elegir(activas) {
+  elegir(activas, evitar = null) {
     this.n = activas.length;
     activas.forEach(k => { if (this.visto[k] === undefined) this.visto[k] = this.ronda; });
     // nunca la misma tres veces seguidas (con 4 o más, ni dos seguidas)
     const [u1, u2] = this.ultimas;
     let posibles = activas.filter(k => !(k === u1 && (activas.length >= 4 || k === u2)));
     if (!posibles.length) posibles = activas.slice();
+    // casi nunca la vecina de la anterior (la nota o el acorde de al lado se reconoce sin esfuerzo);
+    // "casi": si no saliera nunca, eso también sería una pista
+    if (evitar && Math.random() < 0.8) { const sinVecinas = posibles.filter(k => !evitar(k)); if (sinVecinas.length) posibles = sinVecinas; }
     // ninguna se queda mucho tiempo sin salir
     const limite = 2 * activas.length + 1;
     const olvidadas = posibles.filter(k => this.ronda - this.visto[k] >= limite).sort((a, b) => this.visto[a] - this.visto[b]);
@@ -578,6 +740,16 @@ let fichaSonido = 0;
 async function tocar(s) {
   pararTodo();
   const mia = ++fichaSonido;
+  if (s.tipo === "grado" || s.tipo === "acgrado") {
+    // cad: cadencia antes; soloCad: solo la cadencia
+    const ev = s.cad || s.soloCad ? eventosCadencia(s.tono, s.mt) : [];
+    const t0 = ev.length ? CAD_FIN : 0;
+    if (!s.soloCad) {
+      if (s.tipo === "grado") ev.push({ midi: s.midi, t: t0, dur: 1.8 });
+      else midisAcGrado(s).forEach(m => ev.push({ midi: m, t: t0, dur: 2.0 }));
+    }
+    return tocarEventos(ev, mia);
+  }
   if (s.tipo === "intervalo") {
     const [a, b] = midisIntervalo(s);
     return tocarEventos(s.dir === "arm" ? [{ midi: a, t: 0, dur: 2.2 }, { midi: b, t: 0, dur: 2.2 }]
@@ -600,6 +772,15 @@ async function tocar(s) {
   } else {
     sintActual = sintetizar(s.timbre, frec(s.en, s.oct));
   }
+}
+
+// la nota del grado y su camino hasta la tónica (ej. 4 → 3 → 2 → 1); devuelve lo que dura (s)
+function tocarResolucion(s) {
+  const semi = GRADO[s.id].semi, cam = caminoResolucion(semi, s.mt);
+  const ev = cam.map((x, k) => ({ midi: s.midi + (x - semi), t: k * 0.5, dur: k === cam.length - 1 ? 1.4 : 0.48 }));
+  pararTodo();
+  tocarEventos(ev, ++fichaSonido);
+  return (cam.length - 1) * 0.5 + 1.4;
 }
 
 // ----- timbres sintetizados (afinación exacta) -----
@@ -742,12 +923,51 @@ function BotonesLista(cont, items, alPulsar) {
     },
   };
 }
+// botones con etiqueta grande y nota debajo; los elementos (y sus nombres) cambian con la tonalidad
+function BotonesGrado(cont, alPulsar) {
+  cont.classList.add("acordes");
+  const rej = document.createElement("div"); rej.className = "rejilla"; cont.appendChild(rej);
+  let clave = "", botones = {};
+  return {
+    pintar({ items = [], activas = [], habilitado = true, habilitadas = [], correcta = null, erronea = null, sonando = null, todos = false, libres = false } = {}) {
+      const k = items.map(i => i.id).join(",");
+      if (k !== clave) {
+        clave = k; rej.innerHTML = ""; botones = {};
+        items.forEach(it => { const b = document.createElement("button"); b.className = "acorde grado"; b.onclick = () => alPulsar(it.id); rej.appendChild(b); botones[it.id] = b; });
+      }
+      for (const it of items) {
+        const b = botones[it.id], enJuego = todos || activas.includes(it.id);
+        b.innerHTML = `<b>${it.top}</b>${it.sub ? `<small>${it.sub}</small>` : ""}`;
+        b.hidden = !enJuego && !libres;
+        b.disabled = !libres && !(habilitado || habilitadas.includes(it.id));
+        b.classList.toggle("apagada", libres && !habilitadas.includes(it.id));
+        b.classList.toggle("correcta", it.id === correcta); b.classList.toggle("erronea", it.id === erronea); b.classList.toggle("sonando", it.id === sonando);
+      }
+    },
+  };
+}
 const TECLAS_PIANO = { a: "C", w: "Db", s: "D", e: "Eb", d: "E", f: "F", t: "Gb", g: "G", y: "Ab", h: "A", u: "Bb", j: "B" };
 
 // =====================================================================
 //  "JUEGOS": lo que cambia entre notas sueltas y acordes
 // =====================================================================
+const distCirc = (a, b) => { const d = ((a - b) % 12 + 12) % 12; return Math.min(d, 12 - d); };
 const JUEGOS = {
+  grados: {
+    sel: new Selector("oa-pesos-grados"),
+    activos: () => ajustesGr.activos,
+    nombre: etqGrado,
+    sonido(id) {
+      const tono = elegirTono(ajustesGr), oct = azar(octavasDe(ajustesGr.octava)), pc = (tono + GRADO[id].semi) % 12;
+      return { tipo: "grado", id, tono, mt: ajustesGr.mt, oct, midi: 12 * (oct + 1) + pc, cad: true };
+    },
+    con: (s, id) => ({ ...s, id, midi: 12 * (s.oct + 1) + (s.tono + GRADO[id].semi) % 12, cad: false }),
+    idDe: s => s.id,
+    detalle: () => "",
+    vecino: (a, b) => a !== b && distCirc(GRADO[a].semi, GRADO[b].semi) <= 2,
+    pistaTecla: k => ajustesGr.activos.includes(k) ? k : null,
+    unidad: ["grado", "grados"],
+  },
   notas: {
     sel: new Selector("oa-pesos"),
     activos: () => ajustes.activas,
@@ -761,19 +981,22 @@ const JUEGOS = {
     con: (s, id) => ({ ...s, en: id }),
     idDe: s => s.en,
     detalle: s => ajustes.timbre === "variado" ? `Timbre: ${nombreTimbre(s.timbre)}` : "",
+    vecino: (a, b) => a !== b && distCirc(POR_EN[a].pc, POR_EN[b].pc) <= 2,
     pistaTecla: k => TECLAS_PIANO[k] || (k >= "1" && k <= "7" ? NATURALES[+k - 1] : null),
     unidad: ["nota", "notas"],
   },
   acordes: {
-    sel: new Selector("oa-pesos-acordes"),
+    sel: new Selector("oa-pesos-acgrados"),
     activos: () => ajustesAc.activos,
-    nombre: nombreAcorde,
+    nombre: id => id,
     sonido(id) {
-      return { tipo: "acorde", id, oct: azar(octavasDe(ajustesAc.octava)), inv: ajustesAc.posicion === "inversiones" ? azar([0, 1, 2]) : 0 };
+      return { tipo: "acgrado", id, tono: elegirTono(ajustesAc), mt: ajustesAc.mt, oct: azar(octavasDe(ajustesAc.octava)),
+        inv: ajustesAc.posicion === "inversiones" ? azar([0, 1, 2]) : 0, cad: true };
     },
-    con: (s, id) => ({ ...s, id }),
+    con: (s, id) => ({ ...s, id, cad: false }),
     idDe: s => s.id,
     detalle: s => ajustesAc.posicion === "inversiones" ? ["Posición fundamental", "Primera inversión", "Segunda inversión"][s.inv] : "",
+    vecino: (a, b) => { const x = acGrado(a, ajustesAc.mt), y = acGrado(b, ajustesAc.mt); return !!x && !!y && a !== b && distCirc(x.semi, y.semi) <= 2; },
     pistaTecla: k => (k >= "1" && k <= "9") ? ajustesAc.activos[+k - 1] || null : null,
     unidad: ["acorde", "acordes"],
   },
@@ -799,7 +1022,48 @@ const juego = () => JUEGOS[estado.modo];
 //  PLANES POR FASES
 // =====================================================================
 const NAT = NATURALES;
+const G7 = DIATONICOS.M, TON_M = TONOS_ORDEN.M;
 const PLANES = {
+  grados: {
+    clave: "oa-plan-grados",
+    fases: [
+      { t: "Do mayor: 1, 3 y 5", items: ["1", "3", "5"], oct: 4, tonos: [0], consejo: "Las tres notas del acorde de tónica: las más estables. Escucha bien la cadencia antes de cada nota y la resolución al responder." },
+      { t: "Do mayor: añade el 2", items: ["1", "2", "3", "5"], oct: 4, tonos: [0] },
+      { t: "Do mayor: añade el 4", items: ["1", "2", "3", "4", "5"], oct: 4, tonos: [0] },
+      { t: "Do mayor: añade el 6", items: ["1", "2", "3", "4", "5", "6"], oct: 4, tonos: [0] },
+      { t: "Do mayor: añade el 7 (los 7 grados)", items: G7, oct: 4, tonos: [0], consejo: "El 7 es la sensible: medio tono por debajo de la tónica, pide subir a ella." },
+      { t: "Do mayor: octavas 3 a 5", items: G7, oct: "centro", tonos: [0], consejo: "El mismo grado puede sonar grave o agudo: fíjate en su función, no en su altura." },
+      { t: "Sol mayor (con Do)", items: G7, oct: "centro", tonos: [0, 7], nueva: 7, consejo: "Primera tonalidad nueva. La cadencia cambia: escúchala bien, cada grado suena igual en su tonalidad." },
+      { t: "Fa mayor", items: G7, oct: "centro", tonos: TON_M.slice(0, 3), nueva: 5 },
+      { t: "Re mayor", items: G7, oct: "centro", tonos: TON_M.slice(0, 4), nueva: 2 },
+      { t: "Si♭ mayor", items: G7, oct: "centro", tonos: TON_M.slice(0, 5), nueva: 10 },
+      { t: "La mayor", items: G7, oct: "centro", tonos: TON_M.slice(0, 6), nueva: 9 },
+      { t: "Mi♭ mayor", items: G7, oct: "centro", tonos: TON_M.slice(0, 7), nueva: 3 },
+      { t: "Mi mayor", items: G7, oct: "centro", tonos: TON_M, nueva: 4 },
+      { t: "Grados alterados: ♭7", items: [...G7, "b7"], oct: "centro", tonos: TON_M, consejo: "Primer grado fuera de la escala: color «blues», muy usado en rock y pop." },
+      { t: "Grados alterados: ♯4", items: [...G7, "#4", "b7"], oct: "centro", tonos: TON_M },
+      { t: "Grados alterados: ♭3", items: [...G7, "b3", "#4", "b7"], oct: "centro", tonos: TON_M },
+      { t: "La menor", items: DIATONICOS.m, oct: "centro", tonos: [9], mt: "m", consejo: "Modo menor: la cadencia es i–iv–V–i. El ♭3, el ♭6 y el ♭7 son aquí notas propias de la escala." },
+      { t: "Tonalidades menores", items: DIATONICOS.m, oct: "centro", tonos: TONOS_ORDEN.m, mt: "m", consejo: "Última fase: las menores relativas de todas las tonalidades aprendidas." },
+    ],
+  },
+  acordesFun: {
+    clave: "oa-plan-acordes-grados",
+    fases: [
+      { t: "Do mayor: I, IV y V", items: ["I", "IV", "V"], pos: "fundamental", oct: 4, tonos: [0], consejo: "Los tres acordes principales: tónica (reposo), subdominante y dominante (tensión que vuelve a la tónica)." },
+      { t: "Do mayor: añade vi y ii", items: ["I", "ii", "IV", "V", "vi"], pos: "fundamental", oct: 4, tonos: [0] },
+      { t: "Do mayor: añade iii y vii° (los 7)", items: GRADOS_AC.M.map(a => a.id), pos: "fundamental", oct: 4, tonos: [0], consejo: "El vii° es disminuido: suena tenso e inestable." },
+      { t: "Do mayor: con inversiones", items: GRADOS_AC.M.map(a => a.id), pos: "inversiones", oct: 4, tonos: [0], consejo: "El mismo acorde con otra nota en el bajo: reconócelo por su función." },
+      { t: "Sol mayor (con Do)", items: GRADOS_AC.M.map(a => a.id), pos: "inversiones", oct: "centro", tonos: [0, 7], nueva: 7 },
+      { t: "Fa mayor", items: GRADOS_AC.M.map(a => a.id), pos: "inversiones", oct: "centro", tonos: TON_M.slice(0, 3), nueva: 5 },
+      { t: "Re mayor", items: GRADOS_AC.M.map(a => a.id), pos: "inversiones", oct: "centro", tonos: TON_M.slice(0, 4), nueva: 2 },
+      { t: "Si♭ mayor", items: GRADOS_AC.M.map(a => a.id), pos: "inversiones", oct: "centro", tonos: TON_M.slice(0, 5), nueva: 10 },
+      { t: "La mayor", items: GRADOS_AC.M.map(a => a.id), pos: "inversiones", oct: "centro", tonos: TON_M.slice(0, 6), nueva: 9 },
+      { t: "Mi♭ mayor", items: GRADOS_AC.M.map(a => a.id), pos: "inversiones", oct: "centro", tonos: TON_M.slice(0, 7), nueva: 3 },
+      { t: "Mi mayor", items: GRADOS_AC.M.map(a => a.id), pos: "inversiones", oct: "centro", tonos: TON_M, nueva: 4 },
+      { t: "La menor", items: GRADOS_AC.m.map(a => a.id), pos: "inversiones", oct: "centro", tonos: [9], mt: "m", consejo: "Modo menor: i, iv y V (mayor, con la sensible), y VI, III, VII y ii°." },
+    ],
+  },
   notas: {
     clave: "oa-plan-notas",
     fases: [
@@ -852,7 +1116,7 @@ PLANES.intervalos = {
     { t: "Armónicos (a la vez)", items: TODOS_INT, dir: "arm", consejo: "Las dos notas suenan juntas. Última fase del plan de intervalos." },
   ],
 };
-const plan = modo => PLANES[modo];
+const plan = modo => modo === "acordes" ? PLANES.acordesFun : PLANES[modo];
 // estado del plan: fase actual y la más alta alcanzada (no se puede saltar hacia delante).
 // v2: avance por progreso; la antigua fase 12 de notas (repetida) desaparece.
 function estadoPlan(modo) {
@@ -878,7 +1142,9 @@ const faseActual = modo => plan(modo).fases[Math.min(estadoPlan(modo).fase, plan
 const AVANCE = 0.85, VENTANA = 8, REVALIDAR = 3;
 const dia = (t = Date.now()) => Math.floor((t - new Date(t).getTimezoneOffset() * 60000) / 86400000);
 const claveProg = modo => "oa-progreso-" + modo;
-const contexto = (modo, f) => modo === "notas" ? `o${f.oct}|${f.timbre || "piano"}` : modo === "acordes" ? `${f.pos}|o${f.oct}` : f.dir;
+const contexto = (modo, f) => modo === "notas" ? `o${f.oct}|${f.timbre || "piano"}`
+  : modo === "grados" ? `o${f.oct}|${f.mt || "M"}|${(f.tonos || [0]).join(",")}`
+  : modo === "acordes" ? `${f.pos}|o${f.oct}|${f.mt || "M"}|${(f.tonos || [0]).join(",")}` : f.dir;
 function tarjetas(modo) { return leer(claveProg(modo), {}); }
 // cada respuesta: [día, acierto, fase]; f0 = fase en la que salió por primera vez
 function registrarRespuesta(modo, f, id, ok, fase) {
@@ -938,7 +1204,7 @@ function progresoFase(modo, i) {
 // ----- sesión diaria del plan: minutos practicados hoy (solo en el plan, no en práctica libre) -----
 // Se cuenta el tiempo entre respuestas; las pausas de más de 1 minuto no cuentan.
 const DURACIONES = [3, 5, 10, 15, 20];
-const duracion = Object.assign({ notas: 10, acordes: 5, intervalos: 10 }, leer("oa-duracion", {}));
+const duracion = Object.assign({ grados: 10, notas: 10, acordes: 5, intervalos: 10 }, leer("oa-duracion", {}));
 function sesionHoy(modo) {
   const s = leer("oa-sesion-" + modo, null);
   if (s && s.dia === dia()) return s;
@@ -952,7 +1218,7 @@ function sesionHoy(modo) {
 let pInicio = 0;   // cuándo empezó la pregunta actual
 let pPausada = false;   // práctica en pausa: el cronómetro no corre
 // detalle de cada respuesta para el informe: [correcta, elegida, categoría (octava/inversión/dirección), con referencia]
-function categoriaDe(s) { return s.tipo === "nota" ? s.oct : s.tipo === "acorde" ? s.inv : s.dir; }
+function categoriaDe(s) { return s.tipo === "nota" ? s.oct : s.tipo === "grado" ? `${s.tono}|${s.mt}` : s.tipo === "acorde" || s.tipo === "acgrado" ? s.inv : s.dir; }
 function contarSesion(modo, correcta, elegida) {
   const s = sesionHoy(modo), ahora = Date.now();
   if (!s.log) s.log = [];
@@ -995,8 +1261,8 @@ function textoSesion(modo) {
 }
 
 // ----- informe de la sesión -----
-const NOMBRE_CAT = { notas: "octava", acordes: "posición", intervalos: "dirección" };
-const textoCat = (modo, c) => modo === "notas" ? `Octava ${c}` : modo === "acordes" ? INVERSIONES[c][0].toUpperCase() + INVERSIONES[c].slice(1)
+const NOMBRE_CAT = { notas: "octava", grados: "tonalidad", acordes: "posición", intervalos: "dirección" };
+const textoCat = (modo, c) => modo === "notas" ? `Octava ${c}` : modo === "grados" ? nombreTono(+String(c).split("|")[0], String(c).split("|")[1] || "M") : modo === "acordes" ? INVERSIONES[c][0].toUpperCase() + INVERSIONES[c].slice(1)
   : { asc: "Ascendente", desc: "Descendente", arm: "Armónico" }[c] || c;
 function estadisticas(modo, s) {
   const log = s.log || [], porItem = {}, porCat = {}, conf = {};
@@ -1014,17 +1280,17 @@ function estadisticas(modo, s) {
     ref, porItem, porCat, conf, consolidadasHoy, faseSubida, faseInicio: s.inicio ? s.inicio.fase : null };
 }
 function consejos(modo, st) {
-  const j = JUEGOS[modo], c = [], unidad = { notas: "la nota", acordes: "el acorde", intervalos: "el intervalo" }[modo];
+  const j = JUEGOS[modo], c = [], unidad = { grados: "el grado", notas: "la nota", acordes: "el acorde", intervalos: "el intervalo" }[modo];
   if (st.n < 15) c.push("Sesión corta: con más respuestas el informe es más fiable.");
   const flojos = Object.entries(st.porItem).filter(([, [a, t]]) => t >= 3 && a / t < 0.85).sort((x, y) => x[1][0] / x[1][1] - y[1][0] / y[1][1]);
   if (flojos.length) {
     const [id, [a, t]] = flojos[0];
-    c.push(`Lo que más te cuesta: <b>${j.nombre(id)}</b> (${a} de ${t}, ${Math.round(100 * a / t)} %). Dedica un minuto en <b>Escuchar</b> a ${unidad} diciendo su nombre${modo === "notas" ? " y repasa su ancla" : modo === "intervalos" ? " y su canción ancla" : ""}.`);
+    c.push(`Lo que más te cuesta: <b>${j.nombre(id)}</b> (${a} de ${t}, ${Math.round(100 * a / t)} %). Dedica un minuto en <b>Escuchar</b> a ${unidad} diciendo su nombre${modo === "notas" ? " y repasa su ancla" : modo === "intervalos" ? " y su canción ancla" : modo === "grados" ? ", con la cadencia antes y su resolución después" : ""}.`);
   }
   const pares = Object.entries(st.conf).sort((a, b) => b[1] - a[1]);
   if (pares.length && pares[0][1] >= 2) {
     const [x, y] = pares[0][0].split("→"), inverso = st.conf[y + "→" + x] || 0;
-    c.push(`Confusión más repetida: <b>${j.nombre(x)}</b> con <b>${j.nombre(y)}</b> (${pares[0][1] + inverso} veces${inverso ? ", en los dos sentidos" : ""}). En Escuchar ${modo === "notas" ? "tócalas una tras otra y busca qué las diferencia" : "tócalos uno tras otro y busca qué los diferencia"}${modo === "notas" ? " (color, brillo, sensación de tensión o reposo)" : ""}.`);
+    c.push(`Confusión más repetida: <b>${j.nombre(x)}</b> con <b>${j.nombre(y)}</b> (${pares[0][1] + inverso} veces${inverso ? ", en los dos sentidos" : ""}). En Escuchar ${modo === "notas" ? "tócalas una tras otra y busca qué las diferencia" : "tócalos uno tras otro y busca qué los diferencia"}${modo === "notas" ? " (color, brillo, sensación de tensión o reposo)" : modo === "grados" ? " (tensión o reposo, y hacia dónde resuelve cada uno)" : ""}.`);
   }
   const cats = Object.entries(st.porCat).filter(([, [, t]]) => t >= 4);
   if (cats.length > 1) {
@@ -1102,14 +1368,18 @@ function comprobarAvance(modo) {
 // ¿coinciden los ajustes actuales con los de la fase?
 function ajustesDeFase(modo, f) {
   if (modo === "notas") return mismos(ajustes.activas, f.items) && ajustes.octava === f.oct;
+  if (modo === "grados") return mismos(ajustesGr.activos, f.items) && ajustesGr.octava === f.oct && mismos(ajustesGr.tonos, f.tonos) && ajustesGr.mt === (f.mt || "M") && ajustesGr.nueva === (f.nueva ?? null);
   if (modo === "intervalos") return mismos(ajustesIn.activos, f.items) && ajustesIn.direccion === f.dir;
-  return mismos(ajustesAc.activos, f.items) && ajustesAc.octava === f.oct && ajustesAc.posicion === f.pos;
+  return mismos(ajustesAc.activos, f.items) && ajustesAc.octava === f.oct && ajustesAc.posicion === f.pos
+    && mismos(ajustesAc.tonos, f.tonos) && ajustesAc.mt === (f.mt || "M") && ajustesAc.nueva === (f.nueva ?? null);
 }
 function aplicarFase(modo) {
   const f = faseActual(modo);
   if (modo === "notas") { ajustes.activas = TODAS.filter(k => f.items.includes(k)); ajustes.octava = f.oct; ajustes.timbre = f.timbre || "piano"; }
+  else if (modo === "grados") Object.assign(ajustesGr, { activos: GR_IDS.filter(k => f.items.includes(k)), octava: f.oct, tonos: f.tonos.slice(), mt: f.mt || "M", nueva: f.nueva ?? null });
   else if (modo === "intervalos") { ajustesIn.activos = TODOS_INT.filter(k => f.items.includes(k)); ajustesIn.direccion = f.dir; }
-  else { ajustesAc.activos = ACORDES.map(a => a.id).filter(k => f.items.includes(k)); ajustesAc.octava = f.oct; ajustesAc.posicion = f.pos; }
+  else Object.assign(ajustesAc, { activos: GRADOS_AC[f.mt || "M"].map(a => a.id).filter(k => f.items.includes(k)), octava: f.oct, posicion: f.pos,
+    tonos: f.tonos.slice(), mt: f.mt || "M", nueva: f.nueva ?? null });
   cambiarAjustes();
 }
 function irAFase(modo, i) {
@@ -1119,10 +1389,22 @@ function irAFase(modo, i) {
   pintarPlan();
 }
 const listaNombres = (modo, ids) => ids.map(JUEGOS[modo].nombre).join(", ");
-const NOMBRE_MODO = { notas: "Notas sueltas", acordes: "Acordes", intervalos: "Intervalos" };
+const NOMBRE_MODO = { grados: "Grados", notas: "Absoluto", acordes: "Acordes", intervalos: "Intervalos" };
+const listaTonos = f => (f.tonos || [0]).map(t => nombreTono(t, f.mt || "M")).join(", ") + (f.nueva != null ? ` (más a menudo ${nombreTono(f.nueva, f.mt || "M")})` : "");
 
 function pintarPlan() {
-  const modo = estado.modo, p = plan(modo), ep = estadoPlan(modo), i = Math.min(ep.fase, p.fases.length - 1), f = p.fases[i];
+  const modo = estado.modo;
+  const sinPlan = modo === "notas";
+  ["planInforme", "planRutinaCard", "planFasesCard"].forEach(id => $(id).hidden = sinPlan);
+  $("planActual").classList.toggle("fase-actual", !sinPlan);
+  if (sinPlan) {
+    $("planActual").innerHTML = `<p class="fase-num">Absoluto</p><h2>Oído absoluto: práctica libre</h2>
+      <p class="sub" style="margin:0">El programa se centra ahora en el oído relativo (Grados, Acordes e Intervalos). El oído absoluto queda como práctica libre, sin plan: eliges tú las notas, las octavas y el timbre.</p>
+      <div class="acciones"><button class="btn primario" id="planPracticar">Practicar</button></div>`;
+    $("planPracticar").onclick = () => verPestana("practicar");
+    return;
+  }
+  const p = plan(modo), ep = estadoPlan(modo), i = Math.min(ep.fase, p.fases.length - 1), f = p.fases[i];
   const pr = progresoFase(modo, i), ultima = i === p.fases.length - 1;
   const MARCA = { ok: ["✓", "consolidada"], camino: ["◐", "en camino"], revalidar: ["↻", "revalidar"], nueva: ["○", "sin practicar"] };
   const estados = pr.items.map(x => `<li class="prog-fila ${x.e}"><span class="prog-item ${x.e}">${MARCA[x.e][0]} ${JUEGOS[modo].nombre(x.id)}</span><span>${x.e === "ok" ? "consolidad" + (modo === "notas" ? "a" : "o") : (x.e === "revalidar" ? "Revalidar con más opciones: " : "Falta: ") + x.falta}</span></li>`).join("");
@@ -1132,7 +1414,8 @@ function pintarPlan() {
     <p class="fase-num">${NOMBRE_MODO[modo]} · Fase ${i + 1} de ${p.fases.length}</p>
     <h2>${f.t}</h2>
     <dl class="ficha">
-      <dt>${{ notas: "Notas", acordes: "Acordes", intervalos: "Intervalos" }[modo]}</dt><dd>${listaNombres(modo, f.items)}</dd>
+      <dt>${{ grados: "Grados", notas: "Notas", acordes: "Acordes", intervalos: "Intervalos" }[modo]}</dt><dd>${listaNombres(modo, f.items)}</dd>
+      ${modo === "grados" || modo === "acordes" ? `<dt>Tonalidad</dt><dd>${listaTonos(f)}</dd>` : ""}
       ${modo === "intervalos" ? `<dt>Dirección</dt><dd>${TEXTO_DIR[f.dir]}</dd>` : `<dt>Octava</dt><dd>${textoOctava(f.oct)}</dd>`}
       ${modo === "notas" ? `<dt>Timbre</dt><dd>${f.timbre === "variado" ? "variado" : "piano"}</dd>` : modo === "acordes" ? `<dt>Posición</dt><dd>${f.pos === "inversiones" ? "con inversiones" : "fundamental"}</dd>` : ""}
       <dt>Para avanzar</dt><dd>${pr.necesarios} de ${pr.total} consolidad${modo === "notas" ? "as" : "os"} (85 %)</dd>
@@ -1162,7 +1445,12 @@ function pintarPlan() {
     <div class="barra fina"><span style="width:${ts.pct}%"></span></div>`;
   chips($("chipsDuracion"), DURACIONES.map(m => [m, m + " min"]), v => duracion[modo] === v,
     v => { duracion[modo] = v; guardar("oa-duracion", duracion); pintarPlan(); });
-  $("planRutina").innerHTML = modo === "notas"
+  $("planRutina").innerHTML = modo === "grados"
+    ? `<li><b>Escuchar</b> (2 min): pon la cadencia de la tonalidad y escucha cada grado de la fase con su resolución.</li>
+       <li><b>Practicar</b> (10 min): tras la cadencia, di el grado. Escucha siempre la resolución hacia la tónica.</li>
+       <li><b>Cantar</b> (3–5 min): tras la cadencia, canta el grado que te pide.</li>
+       <li>Mejor varias sesiones cortas al día que una larga, y <b>todos los días</b>: los grados se consolidan al acertarlos en días distintos.</li>`
+    : modo === "notas"
     ? `<li><b>Escuchar</b> (2–3 min): las notas de la fase, diciendo su nombre mentalmente.</li>
        <li><b>Practicar</b> (10 min): con el borrador activado; responde lo primero que te venga.</li>
        <li><b>Cantar</b> (3–5 min): las mismas notas, intentando oírlas por dentro antes.</li>
@@ -1172,10 +1460,9 @@ function pintarPlan() {
        <li><b>Practicar</b> (5–10 min): si dudas, canta por dentro el comienzo de la canción ancla.</li>
        <li><b>Cantar</b> (3–5 min): los mismos intervalos a partir de la nota que toca la app.</li>
        <li>Practica a diario: los intervalos se consolidan al acertarlos en días distintos.</li>`
-    : `<li>Como en el método Eguchi: <b>3–5 sesiones al día de 2–5 minutos</b>, mejor repartidas.</li>
-       <li><b>Escuchar</b> (1 min): los acordes de la fase, diciendo su nombre.</li>
-       <li><b>Practicar</b> (2–4 min): con el borrador activado.</li>
-       <li>El plan avanza solo al consolidar los acordes. Al terminarlo, sigue con el plan de notas sueltas.</li>`;
+    : `<li><b>Escuchar</b> (1–2 min): la cadencia y los acordes de la fase, diciendo su grado.</li>
+       <li><b>Practicar</b> (5 min): tras la cadencia, di el grado del acorde (I, IV, V…).</li>
+       <li>Mejor varias sesiones cortas al día. El plan avanza solo al consolidar los acordes en días distintos.</li>`;
 
   const max = Math.max(ep.max ?? 0, i);
   $("planLista").innerHTML = p.fases.map((x, k) => `<li class="${k < i ? "hecha" : k === i ? "actual" : ""}">
@@ -1187,6 +1474,7 @@ function pintarPlan() {
 }
 function resumenFase(modo, f) {
   const partes = [listaNombres(modo, f.items)];
+  if (modo === "grados" || modo === "acordes") partes.push(listaTonos(f));
   if (modo === "intervalos") partes.push(TEXTO_DIR[f.dir]);
   else partes.push("octava: " + textoOctava(f.oct));
   if (modo === "acordes") partes.push(f.pos === "inversiones" ? "con inversiones" : "posición fundamental");
@@ -1194,10 +1482,19 @@ function resumenFase(modo, f) {
   return partes.join(" · ");
 }
 function pintarAvisoPlan() {
+  if (estado.modo === "notas") {
+    // Absoluto: sin plan
+    $("ajustes").classList.remove("modo-plan"); $("avisoPlan").hidden = false;
+    $("avisoPlan").className = "rotulo-plan libre";
+    $("avisoPlan").innerHTML = `<div><span class="etq">Oído absoluto · práctica libre</span><small>Sin plan: eliges tú las notas, las octavas y el timbre.</small></div>`;
+    return;
+  }
   const p = plan(estado.modo), i = Math.min(estadoPlan(estado.modo).fase, p.fases.length - 1), f = p.fases[i];
   const enPlan = estado.vista === "practicar" && !esLibre();
   // al practicar el plan los ajustes los fija la fase: se ocultan (quedan borrador y Do de referencia)
   $("ajustes").classList.toggle("modo-plan", enPlan);
+  // en grados y acordes, dentro del plan no queda ningún ajuste visible: se oculta la tarjeta
+  $("ajustes").classList.toggle("vacio", enPlan && (estado.modo === "grados" || estado.modo === "acordes"));
   $("avisoPlan").hidden = false;
   if (enPlan) {
     if (!ajustesDeFase(estado.modo, f)) { aplicarFase(estado.modo); return; }
@@ -1245,13 +1542,14 @@ function verPestana(cual) {
   pararTodo(); pararMicro();
   document.querySelectorAll(".pestana").forEach(b => b.classList.toggle("on", b.dataset.tab === cual));
   actualizarVisibilidad();
-  $("avisoPlan").hidden = true; $("ajustes").classList.remove("modo-plan");
+  $("avisoPlan").hidden = true; $("ajustes").classList.remove("modo-plan", "vacio");
   ({ plan: pintarPlan, practicar: pausarPractica, cantar: pausarCanto, escuchar: pintarEscuchar,
   })[cual]();
   if (cual === "practicar") pintarAvisoPlan();
 }
 function verModo(modo) {
   estado.modo = modo; guardar("oa-modo", modo);
+  pintarAjustes();
   document.querySelectorAll("[data-modo-btn]").forEach(b => b.classList.toggle("on", b.dataset.modoBtn === modo));
   pNota = null; pRespondida = true;
   pEstado("Pulsa «Empezar» cuando estés listo."); $("pSiguiente").textContent = "Empezar";
@@ -1284,17 +1582,30 @@ function pintarAjustes() {
     v => ajustes.timbre === v, v => { ajustes.timbre = v; cambiarAjustes(); });
   $("borrador").checked = ajustes.borrador;
   $("referencia").checked = ajustes.referencia;
-  // acordes, en dos filas
-  const caja = $("chipsAcordes"); caja.innerHTML = "";
-  for (const t of ["M", "m"]) {
-    const fila = document.createElement("div"); fila.className = "row"; if (t === "m") fila.style.marginTop = "6px";
-    chips(fila, ACORDES.filter(a => a.tipo === t).map(a => [a.id, a.corto, a.nombre]), v => ajustesAc.activos.includes(v), v => {
-      const s = new Set(ajustesAc.activos);
-      if (s.has(v)) { if (s.size > 2) s.delete(v); } else s.add(v);
-      ajustesAc.activos = ACORDES.map(a => a.id).filter(k => s.has(k)); cambiarAjustes();
-    });
-    caja.appendChild(fila);
-  }
+  // grados y acordes por grado
+  chips($("chipsGrados"), GRADOS.map(g => [g.id, g.et]), v => ajustesGr.activos.includes(v), v => {
+    const a = new Set(ajustesGr.activos);
+    if (a.has(v)) { if (a.size > 2) a.delete(v); } else a.add(v);
+    ajustesGr.activos = GR_IDS.filter(k => a.has(k)); cambiarAjustes();
+  });
+  chips($("chipsOctavaGr"), [[4, "4"], ["centro", "3–5"]], v => ajustesGr.octava === v, v => { ajustesGr.octava = v; cambiarAjustes(); });
+  const aj = estado.modo === "acordes" ? ajustesAc : ajustesGr;
+  chips($("chipsModoTono"), [["M", "Mayor"], ["m", "Menor"]], v => aj.mt === v, v => {
+    if (aj.mt === v) return;
+    aj.mt = v; aj.tonos = [TONOS_ORDEN[v][0]]; aj.nueva = null;
+    if (aj === ajustesGr) aj.activos = DIATONICOS[v].slice(); else aj.activos = GRADOS_AC[v].map(a => a.id);
+    cambiarAjustes();
+  });
+  chips($("chipsTonos"), TONOS_ORDEN[aj.mt].map(t => [t, nombreTono(t, aj.mt).replace(/ (mayor|menor)$/, "")]), v => aj.tonos.includes(v), v => {
+    const a = new Set(aj.tonos);
+    if (a.has(v)) { if (a.size > 1) a.delete(v); } else a.add(v);
+    aj.tonos = TONOS_ORDEN[aj.mt].filter(t => a.has(t)); aj.nueva = null; cambiarAjustes();
+  });
+  chips($("chipsAcordes"), GRADOS_AC[ajustesAc.mt].map(a => [a.id, a.id]), v => ajustesAc.activos.includes(v), v => {
+    const s = new Set(ajustesAc.activos);
+    if (s.has(v)) { if (s.size > 2) s.delete(v); } else s.add(v);
+    ajustesAc.activos = GRADOS_AC[ajustesAc.mt].map(a => a.id).filter(k => s.has(k)); cambiarAjustes();
+  });
   chips($("chipsPosicion"), [["fundamental", "Fundamental"], ["inversiones", "Con inversiones"]], v => ajustesAc.posicion === v,
     v => { ajustesAc.posicion = v; cambiarAjustes(); });
   chips($("chipsOctavaAc"), [[4, "4"], ["centro", "3–5"]], v => ajustesAc.octava === v, v => { ajustesAc.octava = v; cambiarAjustes(); });
@@ -1310,7 +1621,7 @@ function pintarAjustes() {
   $("vozAyuda").textContent = `Tesitura cómoda: ${textoNotaMidi(vz.lo)} a ${textoNotaMidi(vz.hi)}. La referencia y las notas de partida se tocan en tu registro.`;
 }
 function cambiarAjustes() {
-  guardar("oa-ajustes", ajustes); guardar("oa-ajustes-acordes", ajustesAc); guardar("oa-ajustes-intervalos", ajustesIn);
+  guardar("oa-ajustes", ajustes); guardar("oa-ajustes-acordes", ajustesAc); guardar("oa-ajustes-intervalos", ajustesIn); guardar("oa-ajustes-grados", ajustesGr);
   pintarAjustes(); pintarPractica();
   if (estado.vista === "plan") pintarPlan();
   if (estado.vista === "practicar") pintarAvisoPlan();
@@ -1326,7 +1637,16 @@ $("todas").onclick = () => { ajustes.activas = TODAS.slice(); cambiarAjustes(); 
 // =====================================================================
 //  PRACTICAR
 // =====================================================================
-const pResp = { notas: Teclado($("pTeclado"), id => pulsar(id)), acordes: BotonesAcordes($("pAcordes"), id => pulsar(id)),
+// botones de grado / acorde con el nombre de la nota en la tonalidad de la pregunta
+function itemsGrados() {
+  const tono = pNota && pNota.tipo === "grado" ? pNota.tono : ajustesGr.tonos[0], mt = pNota && pNota.tipo === "grado" ? pNota.mt : ajustesGr.mt;
+  return GRADOS.filter(g => DIATONICOS[mt].includes(g.id) || ajustesGr.activos.includes(g.id)).map(g => ({ id: g.id, top: g.et, sub: notaGrado(g.id, tono, mt) }));
+}
+function itemsAc() {
+  const tono = pNota && pNota.tipo === "acgrado" ? pNota.tono : ajustesAc.tonos[0], mt = pNota && pNota.tipo === "acgrado" ? pNota.mt : ajustesAc.mt;
+  return GRADOS_AC[mt].map(a => ({ id: a.id, top: a.id, sub: nombreAcGrado(a.id, tono, mt) }));
+}
+const pResp = { grados: BotonesGrado($("pGrados"), id => pulsar(id)), notas: Teclado($("pTeclado"), id => pulsar(id)), acordes: BotonesGrado($("pAcordes"), id => pulsar(id)),
   intervalos: BotonesLista($("pIntervalos"), INTERVALOS, id => pulsar(id)) };
 // tras un fallo, la tecla correcta y la elegida se pueden pulsar para oírlas y compararlas
 // (en notas sueltas, además, cualquier otra tecla)
@@ -1334,14 +1654,15 @@ let pComparar = null;
 function pulsar(id) {
   if (!pRespondida) return responder(id);
   // en notas sueltas, tras fallar, cualquier tecla suena (en la octava de la nota que sonó)
-  if (pComparar && (pComparar.includes(id) || estado.modo === "notas")) tocar(juego().con(pNota, id));
+  if (pComparar && (pComparar.includes(id) || estado.modo !== "intervalos")) tocar(juego().con(pNota, id));
 }
 let pNota = null, pRespondida = true, pElegida = null;
 function pEstado(html, clase = "") { const e = $("pEstado"); e.innerHTML = html; e.className = "estado " + clase; }
 function pintarPractica(marcas = {}) {
   const habilitadas = pComparar || [];
   pResp.notas.pintar({ activas: ajustes.activas, habilitado: !pRespondida, habilitadas, libres: estado.modo === "notas" && !!pComparar, ...(estado.modo === "notas" ? marcas : {}) });
-  pResp.acordes.pintar({ activas: ajustesAc.activos, habilitado: !pRespondida, habilitadas, ...(estado.modo === "acordes" ? marcas : {}) });
+  pResp.grados.pintar({ items: itemsGrados(), activas: ajustesGr.activos, habilitado: !pRespondida, habilitadas, libres: estado.modo === "grados" && !!pComparar, ...(estado.modo === "grados" ? marcas : {}) });
+  pResp.acordes.pintar({ items: itemsAc(), activas: ajustesAc.activos, habilitado: !pRespondida, habilitadas, libres: estado.modo === "acordes" && !!pComparar, ...(estado.modo === "acordes" ? marcas : {}) });
   pResp.intervalos.pintar({ activas: ajustesIn.activos, habilitado: !pRespondida, habilitadas, ...(estado.modo === "intervalos" ? marcas : {}) });
 }
 async function siguiente() {
@@ -1351,13 +1672,16 @@ async function siguiente() {
     pPausada = false;
     const s = sesionHoy(estado.modo); s.ultimo = 0; guardar("oa-sesion-" + estado.modo, s);
   }
-  const id = j.sel.elegir(j.activos());
+  const prev = j.sel.ultimas[0];
+  const id = j.sel.elegir(j.activos(), prev && j.vecino && j.activos().includes(prev) ? k => j.vecino(prev, k) : null);
   pNota = j.sonido(id, pNota); pConReferencia = false; pInicio = Date.now();
   if (!esLibre()) pintarAvisoPlan();   // muestra el botón de pausa
   pComparar = null; pRespondida = true; pintarPractica(); $("pFicha").hidden = true;
   ["pRepetir", "pReferencia", "pSiguiente"].forEach(x => $(x).hidden = true);
-  if (ajustes.borrador) {
-    // el borrador son notas al azar (sin las notas que van a sonar) en todos los modos
+  const funcional = estado.modo === "grados" || estado.modo === "acordes";
+  // en grados y acordes no hay borrador: la cadencia en la tonalidad de la pregunta hace de referencia
+  if (ajustes.borrador && !funcional) {
+    // el borrador son notas al azar (sin las notas que van a sonar)
     pEstado("Borrando…");
     await borrarConNotas(clasesDe(pNota));
     if (mia !== ficha) return;
@@ -1365,13 +1689,16 @@ async function siguiente() {
   pRespondida = false; pintarPractica();
   $("pRepetir").hidden = false;
   const conRef = estado.modo === "notas" && ajustes.referencia;
-  $("pReferencia").hidden = !conRef;
-  pEstado(`¿Qué ${j.unidad[0]} es?${conRef ? "<small>Puedes oír el Do de referencia cuando quieras.</small>" : ""}`);
+  $("pReferencia").textContent = funcional ? "Repetir cadencia" : "Do de referencia";
+  $("pReferencia").hidden = !conRef && !funcional;
+  pEstado(funcional ? `¿Qué ${j.unidad[0]} es?<small>Escucha la cadencia y después ${estado.modo === "grados" ? "la nota" : "el acorde"}.</small>`
+    : `¿Qué ${j.unidad[0]} es?${conRef ? "<small>Puedes oír el Do de referencia cuando quieras.</small>" : ""}`);
   tocar(pNota);
 }
 // Do de la misma octava (y el mismo timbre) que la nota que hay que adivinar
 let pConReferencia = false;   // se oyó el Do de referencia antes de responder: no cuenta para el plan
 const tocarReferencia = () => {
+  if (pNota && (pNota.tipo === "grado" || pNota.tipo === "acgrado")) return tocar({ ...pNota, cad: true });   // repetir cadencia
   if (!pNota || pNota.tipo !== "nota") return;
   if (!pRespondida) pConReferencia = true;
   tocar({ ...pNota, en: "C" });
@@ -1391,7 +1718,31 @@ function responder(id) {
   }
   const extra = (det ? `<small>${det}</small>` : "") + (avance ? `<small class="avance">${avance}</small>` : "")
     + (sesionFin ? `<small class="avance">✓ Has completado la sesión de hoy (${duracion[estado.modo]} min). Puedes seguir si quieres.</small><small><button class="chip mini" data-ver-informe>Ver el informe de la sesión</button></small>` : "");
-  if (ok) { j.sel.acierto(id); pEstado(`<b>✓ ${j.nombre(id)}</b>Correcto${extra}`, "ok"); }
+  let espera_ok = 1400;
+  if (pNota.tipo === "grado") {
+    // grados: siempre suena la resolución de la nota correcta hacia la tónica
+    const tn = nombreTono(pNota.tono, pNota.mt), nc = notaGrado(correcta, pNota.tono, pNota.mt);
+    if (ok) { j.sel.acierto(id); pEstado(`<b>✓ ${etqGrado(id)} · ${nc}</b>${tn}${extra}`, "ok"); }
+    else {
+      j.sel.fallo(correcta, id);
+      pEstado(`<b>✗ Era el ${etqGrado(correcta)} (${nc})</b><small>Elegiste el ${etqGrado(id)} (${notaGrado(id, pNota.tono, pNota.mt)}) · ${tn}</small>${extra}
+        <small>Toca cualquier grado para oírlo en esta tonalidad.</small>`, "bad");
+    }
+    espera_ok = (tocarResolucion({ ...pNota, id: correcta }) + 0.7) * 1000;
+  }
+  else if (pNota.tipo === "acgrado") {
+    const tn = nombreTono(pNota.tono, pNota.mt), nc = nombreAcGrado(correcta, pNota.tono, pNota.mt);
+    if (ok) { j.sel.acierto(id); pEstado(`<b>✓ ${id} · ${nc}</b>${tn}${extra}`, "ok"); }
+    else {
+      j.sel.fallo(correcta, id);
+      pEstado(`<b>✗ Era ${correcta} (${nc})</b>
+        <small>Sonó en ${INVERSIONES[pNota.inv]}: <b style="font-size:inherit">${notasAcGradoTxt(pNota)}</b> (de grave a agudo) · ${tn}</small>
+        <small>Elegiste ${id} (${nombreAcGrado(id, pNota.tono, pNota.mt)}): ${notasAcGradoTxt({ ...pNota, id, inv: 0 })}</small>${extra}
+        <small>Toca cualquier acorde para oírlo en esta tonalidad.</small>`, "bad");
+      tocar({ ...pNota, cad: false });
+    }
+  }
+  else if (ok) { j.sel.acierto(id); pEstado(`<b>✓ ${j.nombre(id)}</b>Correcto${extra}`, "ok"); }
   else if (pNota.tipo === "intervalo") {
     // intervalos: qué notas sonaron y cuántos semitonos tiene cada intervalo
     j.sel.fallo(correcta, id);
@@ -1420,15 +1771,21 @@ function responder(id) {
     if (b) b.onclick = () => tocarContexto(pNota.en, pNota.oct);
   }
   if (!ok && pNota.tipo === "intervalo") { $("pFicha").innerHTML = fichaIntervalo(pNota); $("pFicha").hidden = false; }
+  if (!ok && pNota.tipo === "grado") {
+    const sc = { ...pNota, id: correcta, midi: 12 * (pNota.oct + 1) + (pNota.tono + GRADO[correcta].semi) % 12 };
+    $("pFicha").innerHTML = fichaGrado(sc); $("pFicha").hidden = false;
+    $("pFicha").querySelector("[data-g=cad]").onclick = () => tocar({ ...sc, cad: true });
+    $("pFicha").querySelector("[data-g=res]").onclick = () => tocarResolucion(sc);
+  }
   if (sesionFin && !$("pEstado").querySelector("[data-ver-informe]"))
     $("pEstado").insertAdjacentHTML("beforeend", `<small class="avance">✓ Has completado la sesión de hoy. <button class="chip mini" data-ver-informe>Ver el informe</button></small>`);
   $("pEstado").querySelectorAll("[data-ver-informe]").forEach(b => b.onclick = () => verInforme());
   pintarPractica({ correcta, erronea: ok ? null : id });
   $("pRepetir").hidden = true;
-  $("pReferencia").hidden = !(estado.modo === "notas" && ajustes.referencia);
+  $("pReferencia").hidden = !((estado.modo === "notas" && ajustes.referencia) || pNota.tipo === "grado" || pNota.tipo === "acgrado");
   $("pSiguiente").hidden = false; $("pSiguiente").textContent = "Siguiente";
   pintarAvisoPlan();
-  if (ok) { const mia = ficha; setTimeout(() => { if (mia === ficha && estado.vista === "practicar") siguiente(); }, avance || sesionFin ? 4000 : 1400); }
+  if (ok) { const mia = ficha; setTimeout(() => { if (mia === ficha && estado.vista === "practicar") siguiente(); }, Math.max(espera_ok, avance || sesionFin ? 4000 : 0)); }
 }
 function pausarPractica() {
   pintarPractica();
@@ -1450,7 +1807,7 @@ function pausarPlan() {
   pintarAvisoPlan();
 }
 $("pReferencia").onclick = tocarReferencia;
-$("pRepetir").onclick = () => pNota && tocar(pNota);
+$("pRepetir").onclick = () => pNota && tocar(pNota.cad ? { ...pNota, cad: false } : pNota);
 
 // =====================================================================
 //  CANTAR (solo notas sueltas)
@@ -1473,9 +1830,13 @@ function enTuRegistro(pc, cerca = null) {
   return mejor ?? Math.round(c);
 }
 let cConRef = false;   // se oyó el Do de referencia antes de cantar
+const selCantarGr = new Selector("oa-pesos-canto-grados");
+let cGr = null;   // { tipo: "grado", id, tono, mt, midi } en modo grados
 const selCantarInt = new Selector("oa-pesos-canto-intervalos");
 let cInt = null;   // { id, base, dir } en modo intervalos
-const cTitulo = (pie) => estado.modo === "intervalos"
+const cTitulo = (pie) => estado.modo === "grados"
+  ? `<small>Canta el</small><span class="grande">${etqGrado(cGr.id)}</span><small>de ${nombreTono(cGr.tono, cGr.mt)}. ${pie}</small>`
+  : estado.modo === "intervalos"
   ? `<small>Canta una</small><span class="grande">${nombreIntervalo(cInt.id)}</span><small>${cInt.dir === "asc" ? "por encima" : "por debajo"} de la nota de partida (${textoNotaMidi(cInt.base)}). ${pie}</small>`
   : `<small>Canta</small><span class="grande">${nombre(cObjetivo)}</span><small>${pie}</small>`;
 let cObjetivo = null, cCantada = null, cOirObjetivo = null, micro = null, bucle = null;
@@ -1491,9 +1852,19 @@ async function siguienteCanto() {
     const semi = INTERVALO[id].semi, v = voz();
     const desde = dir === "asc" ? v.lo : v.lo + semi, hasta = dir === "asc" ? v.hi - semi : v.hi;
     cInt = { tipo: "intervalo", id, dir, base: desde + Math.floor(Math.random() * (Math.max(desde, hasta) - desde + 1)) };
+  } else if (estado.modo === "grados") {
+    const id = selCantarGr.elegir(ajustesGr.activos), tono = elegirTono(ajustesGr), pc = (tono + GRADO[id].semi) % 12, m = enTuRegistro(pc);
+    cGr = { tipo: "grado", id, tono, mt: ajustesGr.mt, oct: desdeMidi(m).oct, midi: m };
   } else cObjetivo = selCantar.elegir(ajustes.activas);
   cConRef = false;
   cBotones([]);
+  $("cReferencia").textContent = estado.modo === "grados" ? "Repetir cadencia" : "Do de referencia";
+  if (estado.modo === "grados") {
+    cEstado(cTitulo("Escucha la cadencia y pulsa «Cantar»."));
+    cBotones(["cCantar", "cReferencia"]);
+    tocar({ ...cGr, soloCad: true });
+    return;
+  }
   if (ajustes.borrador) { cEstado("Borrando…"); await borrar(); if (mia !== ficha) return; }
   if (estado.modo === "intervalos") {
     cEstado(cTitulo("Escucha la nota y pulsa «Cantar»."));
@@ -1563,6 +1934,7 @@ async function cantar() {
 function evaluarCanto(tonos) {
   if (tonos.length < 10) { cEstado("No te he oído bien. Acércate al micrófono y canta un poco más fuerte.", "bad"); return cBotones(estado.modo === "intervalos" ? ["cCantar", "cOirCorrecta"] : ["cCantar", "cReferencia"]); }
   if (estado.modo === "intervalos") return evaluarCantoIntervalo(tonos);
+  if (estado.modo === "grados") return evaluarCantoGrado(tonos);
   const est = tonos.slice(Math.floor(tonos.length * 0.3)).sort((a, b) => a - b), f = est[Math.floor(est.length / 2)];
   const midi = 69 + 12 * Math.log2(f / 440), red = Math.round(midi), cents = Math.round((midi - red) * 100);
   const cantada = NOTAS[((red % 12) + 12) % 12].en, octCant = Math.min(7, Math.max(1, Math.floor(red / 12) - 1));
@@ -1577,6 +1949,25 @@ function evaluarCanto(tonos) {
   cOirObjetivo = { tipo: "nota", en: cObjetivo, oct: octObj, timbre: "piano" };
   $("cOirCorrecta").textContent = "Oír la correcta";
   tocar(cOirObjetivo);
+  cBotones(ok ? ["cSiguiente", "cOirCorrecta", "cReferencia"] : ["cSiguiente", "cOirCorrecta", "cOirTuya", "cReferencia"]);
+  $("cSiguiente").textContent = "Siguiente";
+}
+function evaluarCantoGrado(tonos) {
+  const est = tonos.slice(Math.floor(tonos.length * 0.3)).sort((a, b) => a - b), f = est[Math.floor(est.length / 2)];
+  const midi = 69 + 12 * Math.log2(f / 440), red = Math.round(midi), cents = Math.round((midi - red) * 100);
+  const pcCant = ((red % 12) + 12) % 12, semiCant = ((pcCant - cGr.tono) % 12 + 12) % 12, gCant = GRADOS.find(g => g.semi === semiCant);
+  const ok = semiCant === GRADO[cGr.id].semi, desv = `${cents >= 0 ? "+" : "−"}${Math.abs(cents)} cents`;
+  const nCant = deletrearEn(cGr.tono, cGr.mt, gCant.num - 1, pcCant) + desdeMidi(red).oct;
+  if (ok) { selCantarGr.acierto(cGr.id); cEstado(`<b>✓ ${etqGrado(cGr.id)} · ${nCant}</b>Bien cantado (${desv})`, "ok"); }
+  else {
+    selCantarGr.fallo(cGr.id, ajustesGr.activos.includes(gCant.id) ? gCant.id : null);
+    cEstado(`<b>✗ Era el ${etqGrado(cGr.id)} (${notaGrado(cGr.id, cGr.tono, cGr.mt)})</b>Cantaste el ${gCant.et}: ${nCant} (${desv})`, "bad");
+  }
+  const m = enTuRegistro((cGr.tono + GRADO[cGr.id].semi) % 12, midi);
+  cOirObjetivo = { ...cGr, midi: m, oct: desdeMidi(m).oct, cad: false };
+  cCantada = { tipo: "nota", en: desdeMidi(red).en, oct: desdeMidi(red).oct, timbre: "piano" };
+  $("cOirCorrecta").textContent = "Oír la correcta";
+  tocarResolucion(cOirObjetivo);
   cBotones(ok ? ["cSiguiente", "cOirCorrecta", "cReferencia"] : ["cSiguiente", "cOirCorrecta", "cOirTuya", "cReferencia"]);
   $("cSiguiente").textContent = "Siguiente";
 }
@@ -1602,13 +1993,14 @@ function evaluarCantoIntervalo(tonos) {
   cBotones(ok || !real ? ["cSiguiente", "cOirCorrecta"] : ["cSiguiente", "cOirCorrecta", "cOirTuya"]);
   $("cSiguiente").textContent = "Siguiente";
 }
-function pausarCanto() { if (!cObjetivo) return; cEstado("Pulsa «Siguiente» para seguir."); cBotones(["cSiguiente"]); $("cSiguiente").textContent = "Siguiente"; }
+function pausarCanto() { if (!cObjetivo && !cGr && !cInt) return; cEstado("Pulsa «Siguiente» para seguir."); cBotones(["cSiguiente"]); $("cSiguiente").textContent = "Siguiente"; }
 $("cSiguiente").onclick = siguienteCanto;
 $("cCantar").onclick = cantar;
 $("cOirCorrecta").onclick = () => cOirObjetivo && tocar(cOirObjetivo);
 $("cOirTuya").onclick = () => cCantada && tocar(cCantada);
 // Do de referencia en tu registro (el Do más cercano al centro de tu tesitura; Do3 para un bajo)
 $("cReferencia").onclick = () => {
+  if (estado.modo === "grados") return cGr && tocar({ ...cGr, soloCad: true });
   if (!$("cCantar").hidden) cConRef = true;   // antes de cantar
   tocar({ tipo: "nota", ...desdeMidi(enTuRegistro(0)), timbre: "piano" });
 };
@@ -1618,7 +2010,27 @@ $("cReferencia").onclick = () => {
 // =====================================================================
 const SEGMENTO = 2.6;   // segundos por octava en los archivos (2,2 s de nota + 0,4 s de pausa)
 const eTeclado = Teclado($("eTeclado"), en => escuchar(en));
-const eAcordes = BotonesAcordes($("eAcordes"), id => escucharAcorde(id));
+const eGrados = BotonesGrado($("eGrados"), id => escucharGrado(id));
+const eAcGrados = BotonesGrado($("eAcGrados"), id => escucharAcGrado(id));
+const eTono = { tono: 0, mt: "M" };
+let escuchaGr = null, escuchaAcG = null;
+function escucharGrado(id) {
+  escuchaGr = id;
+  const pc = (eTono.tono + GRADO[id].semi) % 12, s = { tipo: "grado", id, tono: eTono.tono, mt: eTono.mt, oct: 4, midi: 60 + pc };
+  tocarResolucion(s);
+  const [sens, txt] = funcionGrado(GRADO[id].semi, eTono.mt);
+  $("eEstadoGr").innerHTML = `<b>${etqGrado(id)} · ${notaGrado(id, eTono.tono, eTono.mt)}</b>
+    <small>${sens[0].toUpperCase() + sens.slice(1)}. ${txt}</small><small>Resuelve: ${caminoResolucion(GRADO[id].semi, eTono.mt).map(etqSemi).join(" → ")}</small>`;
+  pintarEscuchar();
+}
+function escucharAcGrado(id) {
+  escuchaAcG = id;
+  const s = { tipo: "acgrado", id, tono: eTono.tono, mt: eTono.mt, oct: 4, inv: 0, cad: false };
+  tocar(s);
+  $("eEstadoAc").innerHTML = `<b>${id} · ${nombreAcGrado(id, eTono.tono, eTono.mt)}</b>${notasAcGradoTxt(s)}`;
+  pintarEscuchar();
+}
+$("eCadencia").onclick = () => tocar({ tipo: "grado", id: "1", tono: eTono.tono, mt: eTono.mt, oct: 4, midi: 60 + eTono.tono, soloCad: true });
 const eIntervalos = BotonesLista($("eIntervalos"), INTERVALOS, id => escucharIntervalo(id));
 let escuchaInt = null, eDir = "asc";
 let escucha = null, escuchaNota = null, escuchaAcorde = null;
@@ -1659,7 +2071,10 @@ function pintarEscuchar() {
   if (estado.vista === "escuchar" && estado.modo === "intervalos") pintarAnclasInt();
   if (estado.vista === "escuchar" && !$("aTabla").children.length) pintarAnclas();
   eTeclado.pintar({ activas: TODAS, mostrarNegras: true, sonando: escuchaNota });
-  eAcordes.pintar({ todos: true, sonando: escuchaAcorde });
+  chips($("eModos"), [["M", "Mayor"], ["m", "Menor"]], v => eTono.mt === v, v => { eTono.mt = v; eTono.tono = TONOS_ORDEN[v][0]; escuchaGr = escuchaAcG = null; pintarEscuchar(); });
+  chips($("eTonos"), TONOS_ORDEN[eTono.mt].map(t => [t, nombreTono(t, eTono.mt).replace(/ (mayor|menor)$/, "")]), v => eTono.tono === v, v => { eTono.tono = v; pintarEscuchar(); });
+  eGrados.pintar({ todos: true, sonando: escuchaGr, items: GRADOS.map(g => ({ id: g.id, top: g.et, sub: notaGrado(g.id, eTono.tono, eTono.mt) })) });
+  eAcGrados.pintar({ todos: true, sonando: escuchaAcG, items: GRADOS_AC[eTono.mt].map(a => ({ id: a.id, top: a.id, sub: nombreAcGrado(a.id, eTono.tono, eTono.mt) })) });
   const caja = $("eOctavas");
   if (!escuchaNota) {
     $("eEstado").textContent = "Toca una nota para escucharla. Tócala otra vez para pararla.";
@@ -1877,6 +2292,18 @@ function editarAnclaInt(id) {
   ed.scrollIntoView({ block: "nearest" });
 }
 // ficha que aparece al fallar un intervalo
+function fichaGrado(s) {
+  const semi = GRADO[s.id].semi, [sens, txt] = funcionGrado(semi, s.mt), cam = caminoResolucion(semi, s.mt);
+  return `<div class="ficha-nota">
+    <div class="cab"><b>Grado ${etqGrado(s.id)}</b> · ${notaGrado(s.id, s.tono, s.mt)} en ${nombreTono(s.tono, s.mt)}</div>
+    <p>🎚 <b>${sens[0].toUpperCase() + sens.slice(1)}.</b> ${txt}</p>
+    <p>Resuelve: <b>${cam.map(etqSemi).join(" → ")}</b></p>
+    <div class="acciones" style="justify-content:flex-start;margin:4px 0 0">
+      <button class="btn peque" data-g="cad">Oír cadencia y nota</button>
+      <button class="btn peque" data-g="res">Oír la resolución</button>
+    </div>
+  </div>`;
+}
 function fichaIntervalo(s) {
   const [a, b] = midisIntervalo(s), d = s.dir === "desc" ? "desc" : "asc", anc = anclaInt(s.id, d);
   const marcas = [a, b].map(desdeMidi);
@@ -1900,8 +2327,8 @@ document.addEventListener("keydown", e => {
   if (estado.vista === "practicar") {
     if (id && j.activos().includes(id)) responder(id);
     else if (k === " " || k === "enter") { e.preventDefault(); if (!$("pSiguiente").hidden) siguiente(); }
-    else if (k === "r" && pNota && !pRespondida) tocar(pNota);
-    else if (k === "q" && !$("pReferencia").hidden) tocarReferencia();
+    else if (k === "r" && pNota && !pRespondida) tocar(pNota.cad ? { ...pNota, cad: false } : pNota);
+    else if ((k === "q" || k === "c") && !$("pReferencia").hidden) tocarReferencia();
   } else if (estado.vista === "cantar" && (k === " " || k === "enter")) {
     e.preventDefault();
     if (!$("cCantar").hidden) cantar(); else if (!$("cSiguiente").hidden) siguienteCanto();

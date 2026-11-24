@@ -1,7 +1,7 @@
 {
   "name": "Entrenador de Oído",
   "short_name": "Oído",
-  "description": "Practica el oído absoluto con notas de piano real.",
+  "description": "Entrena el oído relativo (grados, acordes e intervalos) y el absoluto con notas de piano real.",
   "lang": "es",
   "start_url": "./",
   "scope": "./",
