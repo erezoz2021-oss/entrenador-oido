@@ -365,13 +365,14 @@
     <div class="acciones">
       <button class="btn primario" id="dNuevo">Nuevo dictado</button>
       <button class="btn primario" id="dCorregir" hidden>Corregir</button>
+      <button class="btn" id="dOirResp" hidden>▶ Oír mi respuesta</button>
       <button class="btn" id="dBorrar" hidden>⌫ Borrar</button>
       <button class="btn" id="dRepetir" hidden>Repetir melodía</button>
       <button class="btn" id="dCadencia" hidden>Repetir cadencia</button>
       <button class="btn" id="dPrimera" hidden>Dar la 1.ª nota</button>
     </div>
     <div id="dResultado" class="izq"></div>
-    <p class="ayuda">Toca las notas en el piano, en orden. Para borrar la última, vuelve a pulsarla. Teclado del ordenador: Retroceso = borrar · Intro = corregir / nuevo dictado · R = repetir la melodía · C = repetir la cadencia</p>
+    <p class="ayuda">Toca las notas en el piano, en orden. Para borrar la última, vuelve a pulsarla. Teclado del ordenador: Retroceso = borrar · Intro = corregir / nuevo dictado · R = repetir la melodía · M = oír mi respuesta · C = repetir la cadencia</p>
   </section>
 
   <section class="card stage" data-vista="practicar" data-modo="grados notas acordes intervalos" aria-live="polite" hidden>
@@ -2452,6 +2453,13 @@ function teclaPiano(m) {
   dic.resp.push(m);
   pintarDictado();
 }
+// tus notas elegidas, seguidas y al mismo ritmo que la melodía, con sus teclas iluminadas
+function oirRespuesta() {
+  if (!dic || !dic.resp.length) return;
+  pararTodo();
+  tocarEventos(dic.resp.map((m, i) => ({ midi: m, t: i * DICT_PASO, dur: DICT_PASO * 0.9 })), ++fichaSonido);
+  dic.resp.forEach((m, i) => visTimers.push(setTimeout(() => iluminarTecla(m, DICT_PASO * 900), 30 + i * DICT_PASO * 1000)));
+}
 // enciende una tecla del piano del dictado mientras suena
 function iluminarTecla(m, ms) {
   const k = $("dVisual").querySelector(`.tecl [data-m="${m}"]`);
@@ -2535,6 +2543,7 @@ function pintarDictado() {
   $("dNuevo").textContent = dic ? "Nuevo dictado" : "Empezar";
   $("dCorregir").hidden = !(enRespuesta && dic.resp.length === dic.notas.length);
   $("dBorrar").hidden = !(enRespuesta && dic.resp.length);
+  $("dOirResp").hidden = !(dic && dic.resp.length);
   $("dRepetir").hidden = !dic;
   $("dCadencia").hidden = !dic;
   $("dPrimera").hidden = !(enRespuesta && !dic.resp.length);
@@ -2542,6 +2551,7 @@ function pintarDictado() {
 $("dNuevo").onclick = nuevoDictado;
 $("dCorregir").onclick = corregirDictado;
 $("dBorrar").onclick = borrarDictado;
+$("dOirResp").onclick = oirRespuesta;
 $("dRepetir").onclick = () => tocarDictado(false);
 $("dCadencia").onclick = () => dic && tocar({ tipo: "grado", id: "1", tono: dic.tono, mt: dic.mt, oct: 4, midi: dic.base, soloCad: true });
 $("dPrimera").onclick = primeraNota;
@@ -2549,6 +2559,7 @@ function teclaDictado(e, k) {
   if (k === "backspace") { e.preventDefault(); borrarDictado(); }
   else if (k === "enter" || k === " ") { e.preventDefault(); if (!$("dCorregir").hidden) corregirDictado(); else if (!$("dNuevo").hidden) nuevoDictado(); }
   else if (k === "r") tocarDictado(false);
+  else if (k === "m") oirRespuesta();
   else if (k === "c") $("dCadencia").onclick();
 }
 // pestaña Plan del dictado: los niveles y tus resultados
