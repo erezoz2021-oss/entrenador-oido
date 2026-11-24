@@ -423,10 +423,6 @@ const POR_EN = Object.fromEntries(NOTAS.map(n => [n.en, n]));
 const NATURALES = NOTAS.filter(n => !n.alt).map(n => n.en);
 const TODAS = NOTAS.map(n => n.en);
 const nombre = en => { const n = POR_EN[en]; return n.alt ? `${n.es}/${n.alt}` : n.es; };
-// nombre "musical" para acordes: Si♭ mayor, Mi♭ mayor… (más habitual que La♯ mayor)
-const nombreRaiz = (en, tipo = "M") => (tipo === "m"
-  ? { Db: "Do♯", Eb: "Mi♭", Gb: "Fa♯", Ab: "Sol♯", Bb: "Si♭" }
-  : { Db: "Re♭", Eb: "Mi♭", Gb: "Fa♯", Ab: "La♭", Bb: "Si♭" })[en] || POR_EN[en].es;
 const OCTAVAS = [2, 3, 4, 5, 6];          // prioridad alta: 3-5 · media: 2 y 6
 const frec = (en, oct) => 440 * 2 ** ((12 * (oct + 1) + POR_EN[en].pc - 69) / 12);
 const desdeMidi = m => ({ en: NOTAS[((m % 12) + 12) % 12].en, oct: Math.floor(m / 12) - 1 });
@@ -439,32 +435,8 @@ const mismos = (a, b) => a.length === b.length && a.every(x => b.includes(x));
 const octavasDe = o => o === "libre" ? OCTAVAS : o === "centro" ? [3, 4, 5] : [o];
 const textoOctava = o => o === "libre" ? "todas (2–6)" : o === "centro" ? "centrales (3–5)" : `solo la ${o}`;
 
-// ----- acordes -----
-const TIPOS = { M: { nombre: "mayor", int: [0, 4, 7], corto: "" }, m: { nombre: "menor", int: [0, 3, 7], corto: "m" } };
-const ACORDES = [];
-for (const t of ["M", "m"]) for (const n of NOTAS)
-  ACORDES.push({ id: n.en + (t === "m" ? "m" : ""), raiz: n.en, tipo: t,
-    nombre: `${nombreRaiz(n.en, t)} ${TIPOS[t].nombre}`, corto: `${nombreRaiz(n.en, t)}${t === "m" ? " m" : ""}` });
-const ACORDE = Object.fromEntries(ACORDES.map(a => [a.id, a]));
-const nombreAcorde = id => ACORDE[id].nombre;
-// notas de un acorde: raíz en la octava "oct", inversión 0/1/2
-function notasAcorde({ id, oct, inv = 0 }) {
-  const a = ACORDE[id], base = 12 * (oct + 1) + POR_EN[a.raiz].pc;
-  let m = TIPOS[a.tipo].int.map(i => base + i);
-  for (let k = 0; k < inv; k++) { m.push(m.shift() + 12); }
-  return m.map(desdeMidi);
-}
 
-// nombre de cada nota del acorde escrito como en una partitura (con ♯ o con ♭ según el acorde)
-function deletrear(id, en) {
-  const a = ACORDE[id], n = POR_EN[en];
-  if (!n.alt) return n.es;
-  const bemoles = nombreRaiz(a.raiz, a.tipo).includes("♭") || ["F", "Cm", "Fm", "Gm", "Dm"].includes(id);
-  return bemoles ? n.alt : n.es;
-}
 const INVERSIONES = ["posición fundamental", "primera inversión", "segunda inversión"];
-// "Do – Mi – La" (de grave a agudo) tal como sonó
-const ordenAcorde = s => notasAcorde(s).map(n => deletrear(s.id, n.en)).join(" – ");
 
 // ----- intervalos -----
 const INTERVALOS = [
@@ -615,7 +587,10 @@ if (!ajustesAc.tonos || !GRADOS_AC[ajustesAc.mt]) Object.assign(ajustesAc, { ton
 ajustesAc.activos = GRADOS_AC[ajustesAc.mt].map(a => a.id).filter(k => ajustesAc.activos.includes(k));
 if (ajustesAc.activos.length < 2) ajustesAc.activos = ajustesAc.mt === "M" ? ["I", "IV", "V"] : ["i", "iv", "V"];
 // tonalidad de cada pregunta: en las fases que añaden una tonalidad nueva, sale más a menudo (60 %)
-const elegirTono = a => a.nueva != null && a.tonos.length > 1 && Math.random() < 0.6 ? a.nueva : azar(a.tonos);
+const elegirTono = a => {
+  if (a.nueva == null || a.tonos.length < 2 || !a.tonos.includes(a.nueva)) return azar(a.tonos);
+  return Math.random() < 0.6 ? a.nueva : azar(a.tonos.filter(t => t !== a.nueva));
+};
 const ajustesIn = Object.assign({ activos: ["4J", "5J", "8J"], direccion: "asc" }, leer("oa-ajustes-intervalos", {}));
 ajustesIn.activos = TODOS_INT.filter(k => ajustesIn.activos.includes(k));
 if (ajustesIn.activos.length < 2) ajustesIn.activos = ["4J", "5J", "8J"];
@@ -736,7 +711,7 @@ async function tocarEventos(eventos, mia) {
     });
   }
 }
-// sonido = { tipo: "nota", en, oct, timbre } | { tipo: "acorde", id, oct, inv } | { tipo: "intervalo", id, base, dir }
+// sonido = { tipo: "nota", en, oct, timbre } | { tipo: "grado", id, tono, mt, oct, midi, cad } | { tipo: "acgrado", id, tono, mt, oct, inv, cad } | { tipo: "intervalo", id, base, dir }
 let fichaSonido = 0;
 async function tocar(s) {
   pararTodo();
@@ -756,19 +731,7 @@ async function tocar(s) {
     return tocarEventos(s.dir === "arm" ? [{ midi: a, t: 0, dur: 2.2 }, { midi: b, t: 0, dur: 2.2 }]
       : [{ midi: a, t: 0, dur: 0.95 }, { midi: b, t: 1.0, dur: 1.8 }], mia);
   }
-  if (s.tipo === "acorde") {
-    const notas = notasAcorde(s);
-    try {
-      const bufs = await Promise.all(notas.map(n => bufferPiano(n.en, n.oct)));
-      if (mia !== fichaSonido) return;
-      const c = getCtx(), t0 = c.currentTime + 0.03, g = c.createGain();
-      g.gain.value = 0.5; g.connect(c.destination);
-      acordeActual = bufs.map(b => { const src = c.createBufferSource(); src.buffer = b; src.connect(g); src.start(t0); return src; });
-    } catch {
-      // abierto como archivo local: se tocan las tres notas con elementos de audio
-      acordeActual = notas.map(n => { const a = new Audio(`notas/${n.en}${n.oct}.mp3`); a.volume = 0.6; a.play().catch(() => {}); return a; });
-    }
-  } else if (!s.timbre || s.timbre === "piano") {
+  if (!s.timbre || s.timbre === "piano") {
     sonando = audioPiano(s.en, s.oct); sonando.currentTime = 0; sonando.play().catch(() => {});
   } else {
     sintActual = sintetizar(s.timbre, frec(s.en, s.oct));
@@ -850,8 +813,8 @@ async function borrarConNotas(excluir = []) {
   await tocarEventos(ev, ++fichaSonido);
   return espera((BORRADOR_N * BORRADOR_PASO + 0.45 + 0.6) * 1000);
 }
-const clasesDe = s => s.tipo === "nota" ? [POR_EN[s.en].pc] : s.tipo === "acorde" ? notasAcorde(s).map(n => POR_EN[n.en].pc)
-  : s.tipo === "intervalo" ? midisIntervalo(s).map(m => ((m % 12) + 12) % 12) : [];
+const clasesDe = s => s.tipo === "nota" ? [POR_EN[s.en].pc] : s.tipo === "acgrado" ? midisAcGrado(s).map(m => m % 12)
+  : s.tipo === "grado" ? [s.midi % 12] : s.tipo === "intervalo" ? midisIntervalo(s).map(m => ((m % 12) + 12) % 12) : [];
 
 // =====================================================================
 //  COMPONENTES DE RESPUESTA
@@ -876,31 +839,6 @@ function Teclado(cont, alPulsar) {
         b.classList.toggle("apagada", libres && !habilitadas.includes(en));
         b.classList.toggle("correcta", en === correcta); b.classList.toggle("erronea", en === erronea); b.classList.toggle("sonando", en === sonando);
       }
-    },
-  };
-}
-function BotonesAcordes(cont, alPulsar) {
-  cont.classList.add("acordes");
-  const botones = {}, grupos = {};
-  for (const t of ["M", "m"]) {
-    const g = document.createElement("div"); g.className = "grupo";
-    g.innerHTML = `<p>${t === "M" ? "Mayores" : "Menores"}</p><div class="rejilla"></div>`;
-    ACORDES.filter(a => a.tipo === t).forEach(a => {
-      const b = document.createElement("button");
-      b.className = "acorde" + (t === "m" ? " menor" : ""); b.textContent = a.corto; b.title = a.nombre;
-      b.onclick = () => alPulsar(a.id);
-      g.lastChild.appendChild(b); botones[a.id] = b;
-    });
-    cont.appendChild(g); grupos[t] = g;
-  }
-  return {
-    pintar({ activas = [], habilitado = true, habilitadas = [], correcta = null, erronea = null, sonando = null, todos = false } = {}) {
-      for (const [id, b] of Object.entries(botones)) {
-        b.hidden = !todos && !activas.includes(id);
-        b.disabled = !(habilitado || habilitadas.includes(id));
-        b.classList.toggle("correcta", id === correcta); b.classList.toggle("erronea", id === erronea); b.classList.toggle("sonando", id === sonando);
-      }
-      for (const t of ["M", "m"]) grupos[t].hidden = !todos && !activas.some(id => ACORDE[id].tipo === t);
     },
   };
 }
@@ -1045,8 +983,8 @@ const PLANES = {
       { t: "Grados alterados: ♭7", items: [...G7, "b7"], oct: "centro", tonos: TON_M, consejo: "Primer grado fuera de la escala: color «blues», muy usado en rock y pop." },
       { t: "Grados alterados: ♯4", items: [...G7, "#4", "b7"], oct: "centro", tonos: TON_M },
       { t: "Grados alterados: ♭3", items: [...G7, "b3", "#4", "b7"], oct: "centro", tonos: TON_M },
-      { t: "La menor", items: DIATONICOS.m, oct: "centro", tonos: [9], mt: "m", consejo: "Modo menor: la cadencia es i–iv–V–i. El ♭3, el ♭6 y el ♭7 son aquí notas propias de la escala." },
-      { t: "Tonalidades menores", items: DIATONICOS.m, oct: "centro", tonos: TONOS_ORDEN.m, mt: "m", consejo: "Última fase: las menores relativas de todas las tonalidades aprendidas." },
+      { t: "La menor", items: [...DIATONICOS.m, "7"], oct: "centro", tonos: [9], mt: "m", consejo: "Modo menor: la cadencia es i–iv–V–i. El ♭3, el ♭6 y el ♭7 son aquí notas propias de la escala; el 7 (la sensible, la del acorde V de la cadencia) también aparece." },
+      { t: "Tonalidades menores", items: [...DIATONICOS.m, "7"], oct: "centro", tonos: TONOS_ORDEN.m, mt: "m", consejo: "Última fase: las menores relativas de todas las tonalidades aprendidas." },
     ],
   },
   acordesFun: {
@@ -1082,23 +1020,6 @@ const PLANES = {
       { t: "Añade Do♯: las 12 notas", items: TODAS, oct: "centro", consejo: "Al superarla habrás completado la prioridad alta (octavas 3 a 5)." },
       { t: "Registros de soporte (octavas 2–6)", items: TODAS, oct: "libre", consejo: "Se añaden la octava 2 (bajos) y la 6 (agudos brillantes). En los extremos cuesta más; es normal." },
       { t: "Timbres variados", items: TODAS, oct: "libre", timbre: "variado", consejo: "Última fase. Después, mantenlo con unos minutos al día." },
-    ],
-  },
-  acordes: {
-    clave: "oa-plan-acordes",
-    fases: [
-      { t: "Tres acordes mayores", items: ["C", "F", "G"], pos: "fundamental", oct: 4, consejo: "Como en el método Eguchi: pocos acordes, sesiones muy cortas varias veces al día." },
-      { t: "Añade La menor", items: ["C", "F", "G", "Am"], pos: "fundamental", oct: 4 },
-      { t: "Añade Re menor", items: ["C", "F", "G", "Am", "Dm"], pos: "fundamental", oct: 4 },
-      { t: "Añade Mi menor", items: ["C", "F", "G", "Am", "Dm", "Em"], pos: "fundamental", oct: 4 },
-      { t: "Inversiones", items: ["C", "F", "G", "Am", "Dm", "Em"], pos: "inversiones", oct: 4, consejo: "El mismo acorde con otra nota en el bajo. Reconócelo por su sonido de conjunto." },
-      { t: "Octavas 3 a 5", items: ["C", "F", "G", "Am", "Dm", "Em"], pos: "inversiones", oct: "centro" },
-      { t: "Añade Re mayor", items: ["C", "D", "F", "G", "Am", "Dm", "Em"], pos: "inversiones", oct: "centro" },
-      { t: "Añade La mayor", items: ["C", "D", "F", "G", "A", "Am", "Dm", "Em"], pos: "inversiones", oct: "centro" },
-      { t: "Añade Mi mayor", items: ["C", "D", "E", "F", "G", "A", "Am", "Dm", "Em"], pos: "inversiones", oct: "centro" },
-      { t: "Añade Si♭ mayor", items: ["C", "D", "E", "F", "G", "A", "Bb", "Am", "Dm", "Em"], pos: "inversiones", oct: "centro" },
-      { t: "Todos los mayores", items: [...TODAS, "Am", "Dm", "Em"], pos: "inversiones", oct: "centro" },
-      { t: "Todos los acordes", items: ACORDES.map(a => a.id), pos: "inversiones", oct: "centro", consejo: "Al completarla, sigue con el plan de notas sueltas: en el método Eguchi los acordes preparan el paso a las notas." },
     ],
   },
 };
@@ -1220,7 +1141,7 @@ function sesionHoy(modo) {
 let pInicio = 0;   // cuándo empezó la pregunta actual
 let pPausada = false;   // práctica en pausa: el cronómetro no corre
 // detalle de cada respuesta para el informe: [correcta, elegida, categoría (octava/inversión/dirección), con referencia]
-function categoriaDe(s) { return s.tipo === "nota" ? s.oct : s.tipo === "grado" ? `${s.tono}|${s.mt}` : s.tipo === "acorde" || s.tipo === "acgrado" ? s.inv : s.dir; }
+function categoriaDe(s) { return s.tipo === "nota" ? s.oct : s.tipo === "grado" ? `${s.tono}|${s.mt}` : s.tipo === "acgrado" ? s.inv : s.dir; }
 function contarSesion(modo, correcta, elegida) {
   const s = sesionHoy(modo), ahora = Date.now();
   if (!s.log) s.log = [];
@@ -1739,7 +1660,7 @@ function responder(id) {
       j.sel.fallo(correcta, id);
       pEstado(`<b>✗ Era ${correcta} (${nc})</b>
         <small>Sonó en ${INVERSIONES[pNota.inv]}: <b style="font-size:inherit">${notasAcGradoTxt(pNota)}</b> (de grave a agudo) · ${tn}</small>
-        <small>Elegiste ${id} (${nombreAcGrado(id, pNota.tono, pNota.mt)}): ${notasAcGradoTxt({ ...pNota, id, inv: 0 })}</small>${extra}
+        <small>Elegiste ${id} (${nombreAcGrado(id, pNota.tono, pNota.mt)}): ${notasAcGradoTxt({ ...pNota, id, inv: 0 })}</small>${det ? extra.replace(`<small>${det}</small>`, "") : extra}
         <small>Toca cualquier acorde para oírlo en esta tonalidad.</small>`, "bad");
       tocar({ ...pNota, cad: false });
     }
@@ -1753,15 +1674,6 @@ function responder(id) {
       <small>Sonó: <b style="font-size:inherit">${textoNotaMidi(a)}${sep}${textoNotaMidi(b)}</b> · ${INTERVALO[correcta].semi} semitonos · ${TEXTO_DIR[pNota.dir]}</small>
       <small>Elegiste ${j.nombre(id)} (${INTERVALO[id].semi} semitonos)</small>
       <small>Toca los dos intervalos marcados para oírlos y compararlos.</small>`, "bad");
-    tocar(pNota);
-  }
-  else if (pNota.tipo === "acorde") {
-    // acordes: qué notas sonaron (de grave a agudo) y cuáles tiene el que elegiste
-    j.sel.fallo(correcta, id);
-    pEstado(`<b>✗ Era ${j.nombre(correcta)}</b>
-      <small>Sonó en ${INVERSIONES[pNota.inv]}: <b style="font-size:inherit">${ordenAcorde(pNota)}</b> (de grave a agudo)</small>
-      <small>Elegiste ${j.nombre(id)}: ${ordenAcorde({ id, oct: 4, inv: 0 })}</small>
-      <small>Toca los dos acordes marcados para oírlos y compararlos.</small>`, "bad");
     tocar(pNota);
   }
   else { j.sel.fallo(correcta, id); pEstado(`<b>✗ Era ${j.nombre(correcta)}</b>Elegiste ${j.nombre(id)}${extra}<small>Toca las dos notas marcadas para oírlas y compararlas${pNota.tipo === "nota" ? ", o cualquier otra tecla (suena en la misma octava)" : ""}.</small>`, "bad"); tocar(pNota); }
@@ -2035,7 +1947,7 @@ function escucharAcGrado(id) {
 $("eCadencia").onclick = () => tocar({ tipo: "grado", id: "1", tono: eTono.tono, mt: eTono.mt, oct: 4, midi: 60 + eTono.tono, soloCad: true });
 const eIntervalos = BotonesLista($("eIntervalos"), INTERVALOS, id => escucharIntervalo(id));
 let escuchaInt = null, eDir = "asc";
-let escucha = null, escuchaNota = null, escuchaAcorde = null;
+let escucha = null, escuchaNota = null;
 function pararEscucha() {
   if (escucha) { escucha.pause(); escucha.currentTime = 0; }
   escucha = null; escuchaNota = null;
@@ -2049,13 +1961,6 @@ function escuchar(en) {
   escucha = new Audio(`escuchar/${en}.mp3`);
   escucha.ontimeupdate = pintarEscuchar; escucha.onended = pararEscucha;
   escucha.play().catch(() => {});
-  pintarEscuchar();
-}
-function escucharAcorde(id) {
-  escuchaAcorde = id;
-  tocar({ tipo: "acorde", id, oct: 4, inv: 0 });
-  const notas = notasAcorde({ id, oct: 4 }).map(n => nombre(n.en));
-  $("eEstadoAc").innerHTML = `<b>${nombreAcorde(id)}</b>${notas.join(" · ")}`;
   pintarEscuchar();
 }
 function escucharIntervalo(id) {
@@ -2327,7 +2232,7 @@ document.addEventListener("keydown", e => {
   if (e.target.tagName === "INPUT" || e.ctrlKey || e.metaKey || e.altKey) return;
   const k = e.key.toLowerCase(), j = juego(), id = j.pistaTecla(k);
   if (estado.vista === "practicar") {
-    if (id && j.activos().includes(id)) responder(id);
+    if (id && j.activos().includes(id)) pulsar(id);   // antes de responder, responde; tras fallar, compara
     else if (k === " " || k === "enter") { e.preventDefault(); if (!$("pSiguiente").hidden) siguiente(); }
     else if (k === "r" && pNota && !pRespondida) tocar(pNota.cad ? { ...pNota, cad: false } : pNota);
     else if ((k === "q" || k === "c") && !$("pReferencia").hidden) tocarReferencia();
