@@ -554,7 +554,8 @@ const notasAcGradoTxt = s => { const a = acGrado(s.id, s.mt); return midisAcGrad
   return deletrearEn(s.tono, s.mt, a.num - 1 + [0, 2, 4][pos], ((m % 12) + 12) % 12);
 }).join(" – "); };
 // cadencia I–IV–V–I (o i–iv–V–i) en la tonalidad: bajo entre Sol2 y Fa♯3, acordes entre Si♭3 y La4
-const CAD_PASO = 0.7, CAD_FIN = 3.35;
+// la cadencia acaba hacia 3,25 s; la nota entra a los 4,1 s: casi un segundo de silencio para oírla aislada
+const CAD_PASO = 0.7, CAD_FIN = 4.1, CAD_VOL = 0.35;
 function eventosCadencia(tono, mt) {
   const tonica = mt === "M" ? "M" : "m";
   const acs = [[0, tonica], [5, mt === "M" ? "M" : "m"], [7, "M"], [0, tonica]];
@@ -562,8 +563,8 @@ function eventosCadencia(tono, mt) {
   const ev = [];
   acs.forEach(([raiz, t], k) => {
     const dur = k === 3 ? 1.0 : 0.62, pcR = (tono + raiz) % 12;
-    ev.push({ midi: enRango(pcR, 43), t: k * CAD_PASO, dur });
-    TIPO_INT[t].forEach(i => ev.push({ midi: enRango((pcR + i) % 12, 58), t: k * CAD_PASO, dur }));
+    ev.push({ midi: enRango(pcR, 43), t: k * CAD_PASO, dur, vol: CAD_VOL });
+    TIPO_INT[t].forEach(i => ev.push({ midi: enRango((pcR + i) % 12, 58), t: k * CAD_PASO, dur, vol: CAD_VOL }));
   });
   return ev;
 }
@@ -694,12 +695,14 @@ async function tocarEventos(eventos, mia) {
     const bufs = await Promise.all(eventos.map(e => { const n = desdeMidi(e.midi); return bufferPiano(n.en, n.oct); }));
     if (mia !== fichaSonido) return;
     const c = getCtx(), t0 = c.currentTime + 0.03, master = c.createGain();
-    master.gain.value = eventos.some(e => e.t === 0 && eventos.filter(x => x.t === 0).length > 1) ? 0.6 : 0.9;
+    // con "vol" por evento (cadencia + nota) cada nota lleva su volumen; si no, se baja todo cuando hay acordes
+    master.gain.value = eventos.some(e => e.vol != null) ? 0.9 : eventos.some(e => e.t === 0 && eventos.filter(x => x.t === 0).length > 1) ? 0.6 : 0.9;
     master.connect(c.destination);
     acordeActual = eventos.map((e, i) => {
       const src = c.createBufferSource(), g = c.createGain(), t = t0 + e.t;
       src.buffer = bufs[i]; src.connect(g).connect(master);
-      g.gain.setValueAtTime(1, t); g.gain.setValueAtTime(1, t + e.dur); g.gain.linearRampToValueAtTime(0, t + e.dur + 0.15);
+      const v = e.vol ?? 1;
+      g.gain.setValueAtTime(v, t); g.gain.setValueAtTime(v, t + e.dur); g.gain.linearRampToValueAtTime(0, t + e.dur + 0.15);
       src.start(t); src.stop(t + e.dur + 0.2);
       return src;
     });
@@ -707,6 +710,7 @@ async function tocarEventos(eventos, mia) {
     // abierto como archivo local: elementos de audio con temporizador
     acordeActual = eventos.map(e => {
       const n = desdeMidi(e.midi), a = new Audio(`notas/${n.en}${n.oct}.mp3`), id = setTimeout(() => a.play().catch(() => {}), e.t * 1000);
+      a.volume = Math.min(1, (e.vol ?? 1) * 0.9);
       return { stop() { clearTimeout(id); a.pause(); } };
     });
   }
@@ -721,8 +725,8 @@ async function tocar(s) {
     const ev = s.cad || s.soloCad ? eventosCadencia(s.tono, s.mt) : [];
     const t0 = ev.length ? CAD_FIN : 0;
     if (!s.soloCad) {
-      if (s.tipo === "grado") ev.push({ midi: s.midi, t: t0, dur: 1.8 });
-      else midisAcGrado(s).forEach(m => ev.push({ midi: m, t: t0, dur: 2.0 }));
+      if (s.tipo === "grado") ev.push({ midi: s.midi, t: t0, dur: 2.0, vol: 1 });
+      else midisAcGrado(s).forEach(m => ev.push({ midi: m, t: t0, dur: 2.0, vol: 0.5 }));
     }
     return tocarEventos(ev, mia);
   }
