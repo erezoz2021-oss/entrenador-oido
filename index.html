@@ -942,6 +942,23 @@ async function borrarConNotas(excluir = []) {
   await tocarEventos(ev, ++fichaSonido);
   return espera((BORRADOR_N * BORRADOR_PASO + 0.45 + 0.6) * 1000);
 }
+// Motivos de Absoluto: tras acertar Re, Fa, Sol o Si suena su motivo (en vez del borrador), siempre en la
+// octava 4. Duraciones en corcheas (negra = 2) a 90 por minuto.
+const MOTIVO_CORCHEA = 60 / 90 / 2;
+const MOTIVOS = {
+  D: [[60, 0, 1], [60, 2, 1], [62, 3, 3]],              // corchea Do, silencio, corchea Do, negra con puntillo Re
+  F: [[62, 0, 3], [62, 3, 1], [62, 4, 1], [65, 5, 2]],  // negra con puntillo Re, corchea Re, corchea Re, corchea Fa
+  G: [[60, 0, 3], [60, 3, 1], [67, 4, 4]],              // negra con puntillo Do, corchea Do, blanca Sol
+  B: [[60, 0, 1], [60, 1, 1], [60, 2, 1], [71, 3, 4]],  // tres corcheas de Do, blanca Si
+};
+// toca el motivo y devuelve lo que dura (s)
+function tocarMotivo(en) {
+  const mot = MOTIVOS[en]; if (!mot) return 0;
+  pararTodo();
+  const ev = mot.map(([m, t, d], i) => ({ midi: m, t: t * MOTIVO_CORCHEA, dur: d * MOTIVO_CORCHEA * (i === mot.length - 1 ? 1.6 : 0.92) }));
+  tocarEventos(ev, ++fichaSonido);
+  return Math.max(...ev.map(e => e.t + e.dur));
+}
 const clasesDe = s => s.tipo === "nota" ? [POR_EN[s.en].pc] : s.tipo === "acgrado" ? midisAcGrado(s).map(m => m % 12)
   : s.tipo === "grado" ? [s.midi % 12] : s.tipo === "intervalo" ? midisIntervalo(s).map(m => ((m % 12) + 12) % 12) : [];
 
@@ -1711,7 +1728,7 @@ function pulsar(id) {
   // en notas sueltas, tras fallar, cualquier tecla suena (en la octava de la nota que sonó)
   if (pComparar && (pComparar.includes(id) || estado.modo !== "intervalos")) tocar(juego().con(pNota, id));
 }
-let pNota = null, pRespondida = true, pElegida = null;
+let pNota = null, pRespondida = true, pElegida = null, pSinBorrador = false;
 function pEstado(html, clase = "") { const e = $("pEstado"); e.innerHTML = html; e.className = "estado " + clase; }
 function pintarPractica(marcas = {}) {
   const habilitadas = pComparar || [];
@@ -1735,8 +1752,9 @@ async function siguiente() {
   ["pRepetir", "pReferencia", "pSiguiente"].forEach(x => $(x).hidden = true);
   const funcional = estado.modo === "grados" || estado.modo === "acordes";
   // en grados y acordes no hay borrador: la cadencia en la tonalidad de la pregunta hace de referencia
-  if (ajustes.borrador && !funcional) {
-    // el borrador son notas al azar (sin las notas que van a sonar)
+  const sinBorrador = pSinBorrador; pSinBorrador = false;
+  if (ajustes.borrador && !funcional && !sinBorrador) {
+    // el borrador son notas al azar (sin las notas que van a sonar); tras un motivo no hace falta
     pEstado("Borrando…");
     await borrarConNotas(clasesDe(pNota));
     if (mia !== ficha) return;
@@ -1797,7 +1815,11 @@ function responder(id) {
       tocar({ ...pNota, cad: false });
     }
   }
-  else if (ok) { j.sel.acierto(id); pEstado(`<b>✓ ${j.nombre(id)}</b>Correcto${extra}`, "ok"); }
+  else if (ok) {
+    j.sel.acierto(id); pEstado(`<b>✓ ${j.nombre(id)}</b>Correcto${extra}`, "ok");
+    // Absoluto: tras acertar una nota con motivo suena el motivo, y hace de borrador
+    if (pNota.tipo === "nota" && MOTIVOS[correcta]) { espera_ok = (tocarMotivo(correcta) + 0.6) * 1000; pSinBorrador = true; }
+  }
   else if (pNota.tipo === "intervalo") {
     // intervalos: qué notas sonaron y cuántos semitonos tiene cada intervalo
     j.sel.fallo(correcta, id);
@@ -1822,6 +1844,14 @@ function responder(id) {
     $("pFicha").innerHTML = fichaGrado(sc); $("pFicha").hidden = false;
     $("pFicha").querySelector("[data-g=cad]").onclick = () => tocar({ ...sc, cad: true });
     $("pFicha").querySelector("[data-g=res]").onclick = () => tocarResolucion(sc);
+  }
+  // Absoluto: tras fallar, botones para oír el motivo de la nota correcta (y el de la elegida, si lo tiene)
+  if (!ok && pNota.tipo === "nota") {
+    const conMotivo = [correcta, id].filter(x => MOTIVOS[x]);
+    if (conMotivo.length) {
+      $("pEstado").insertAdjacentHTML("beforeend", `<small>${conMotivo.map(x => `<button class="chip mini" data-motivo="${x}">▶ Motivo de ${j.nombre(x)}</button>`).join(" ")}</small>`);
+      $("pEstado").querySelectorAll("[data-motivo]").forEach(b => b.onclick = () => tocarMotivo(b.dataset.motivo));
+    }
   }
   if (sesionFin && !$("pEstado").querySelector("[data-ver-informe]"))
     $("pEstado").insertAdjacentHTML("beforeend", `<small class="avance">✓ Has completado la sesión de hoy. <button class="chip mini" data-ver-informe>Ver el informe</button></small>`);
