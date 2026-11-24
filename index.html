@@ -371,7 +371,7 @@
       <button class="btn" id="dPrimera" hidden>Dar la 1.ª nota</button>
     </div>
     <div id="dResultado" class="izq"></div>
-    <p class="ayuda">Toca las notas en el piano, en orden. Teclado del ordenador: Retroceso = borrar · Intro = corregir / nuevo dictado · R = repetir la melodía · C = repetir la cadencia</p>
+    <p class="ayuda">Toca las notas en el piano, en orden. Para borrar la última, vuelve a pulsarla. Teclado del ordenador: Retroceso = borrar · Intro = corregir / nuevo dictado · R = repetir la melodía · C = repetir la cadencia</p>
   </section>
 
   <section class="card stage" data-vista="practicar" data-modo="grados notas acordes intervalos" aria-live="polite" hidden>
@@ -2440,20 +2440,31 @@ function tocarDictado(conCadencia) {
   tocarEventos(ev, ++fichaSonido);
 }
 function dEstadoTxt(html, clase = "") { const e = $("dEstado"); e.innerHTML = html; e.className = "estado " + clase; }
-// una tecla del piano: suena y, mientras respondes, queda elegida
+// una tecla del piano: suena y se ilumina; mientras respondes, queda elegida.
+// Volver a pulsar la ÚLTIMA elegida la borra (la melodía nunca repite la misma nota seguida);
+// una elegida antes se añade otra vez (notas repetidas, como 1-5-1).
 function teclaPiano(m) {
+  if (dic && dic.fase === "respuesta" && dic.resp.length && dic.resp[dic.resp.length - 1] === m) { borrarDictado(); return; }
   pararTodo();
   tocarEventos([{ midi: m, t: 0, dur: 1.3 }], ++fichaSonido);
+  iluminarTecla(m, 1300);
   if (!dic || dic.fase !== "respuesta" || dic.resp.length >= dic.notas.length) return;
   dic.resp.push(m);
   pintarDictado();
+}
+// enciende una tecla del piano del dictado mientras suena
+function iluminarTecla(m, ms) {
+  const k = $("dVisual").querySelector(`.tecl [data-m="${m}"]`);
+  if (!k) return;
+  k.classList.add("on");
+  visTimers.push(setTimeout(() => k.classList.remove("on"), ms));
 }
 function borrarDictado() { if (dic && dic.fase === "respuesta" && dic.resp.length) { dic.resp.pop(); if (!dic.resp.length) dic.ayuda = false; pintarDictado(); } }
 function primeraNota() {
   if (!dic || dic.fase !== "respuesta") return;
   const m = dic.base + dic.notas[0].semi;
   dic.resp[0] = m; dic.ayuda = true; pintarDictado();
-  pararTodo(); tocarEventos([{ midi: m, t: 0, dur: 1.3 }], ++fichaSonido);
+  pararTodo(); tocarEventos([{ midi: m, t: 0, dur: 1.3 }], ++fichaSonido); iluminarTecla(m, 1300);
 }
 // bien: la nota exacta · octava: la nota correcta en otra octava · mal: otra nota
 const evalNota = (m, c) => m === c ? "bien" : ((m - c) % 12 === 0 ? "octava" : "mal");
